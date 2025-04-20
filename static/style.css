@@ -1,0 +1,37 @@
+.centered {
+  margin: 8px auto 8px auto;
+  width: fit-content;
+}
+
+.header-icon, .header-name {
+  vertical-align: middle;
+}
+
+.header-name {
+  font-size: 2em;
+  margin-left: 8px;
+}
+
+.button {
+  display: inline-block;
+  margin-left: 8px;
+  margin-right: 8px;
+}
+
+.button-icon {
+  vertical-align: bottom;
+}
+
+table, th, td {
+  border: 1px solid #000000;
+  border-collapse: collapse;
+}
+
+th, td {
+  padding: 3px;
+}
+
+th {
+  background-color: #606060;
+  color: #ffffff;
+}

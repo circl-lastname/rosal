@@ -17,14 +17,22 @@ export function populate(name, gaps) {
   
   let template = templates[name];
   
-  for (let gap in gaps) {
-    let text = gaps[gap].toString().replaceAll("&", "&#38;")
-                                   .replaceAll("<", "&lt;")
-                                   .replaceAll(">", "&gt;")
-                                   .replaceAll("\"", "&#34;")
-                                   .replaceAll("'", "&#39;");
+  if (gaps) {
+    for (let gap in gaps) {
+      let text = gaps[gap].toString().replaceAll("&", "&#38;")
+                                    .replaceAll("<", "&lt;")
+                                    .replaceAll(">", "&gt;")
+                                    .replaceAll('"', "&#34;")
+                                    .replaceAll("'", "&#39;")
+                                    .replaceAll("%", "&#37;")
+                                    .replaceAll("@", "&#64;");
+      
+      template = template.replaceAll(`%%${gap}%%`, text);
+    }
     
-    template = template.replaceAll(`%%${gap}%%`, text);
+    for (let gap in gaps) {
+      template = template.replaceAll(`@@${gap}@@`, gaps[gap]);
+    }
   }
   
   return template;

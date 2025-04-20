@@ -17,6 +17,7 @@ export function loadStaticFiles() {
 export function handleStaticRequest(req, path, res) {
   if (path.length == 2 && staticFiles[path[1]]) {
     res.setHeader("Content-Type", staticFiles[path[1]].type);
+    res.setHeader("Cache-Control", "public, max-age=18000, immutable");
     res.end(staticFiles[path[1]].data);
   } else {
     sendError(res, 404, "Not found");

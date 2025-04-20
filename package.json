@@ -3,5 +3,8 @@
   "version": "0.0.1",
   "license": "MIT",
   "main": "src/index.js",
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "better-sqlite3": "^11.9.1"
+  }
 }

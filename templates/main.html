@@ -7,7 +7,13 @@
     <title>%%forumName%% - %%pageName%%</title>
   </head>
   <body>
-    <h1>%%forumName%%</h1>
-    <img src="/static/icon-48x48.png">
+    <div class="centered">
+      <img class="header-icon" width="48" height="48" src="/static/icon-48x48.png"><span class="header-name">%%forumName%%</span>
+    </div>
+    <div class="centered">
+      @@buttons@@
+    </div>
+    @@content@@
+    <div class="centered">Powered by Rosal</div>
   </body>
 </html>
