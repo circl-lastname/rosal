@@ -12,26 +12,35 @@
   margin-left: 8px;
 }
 
+.heading {
+  font-size: 1.5em;
+}
+
 .button {
   display: inline-block;
-  margin-left: 8px;
-  margin-right: 8px;
+  margin-left: 4px;
+  margin-right: 4px;
 }
 
 .button-icon {
+  margin-right: 2px;
   vertical-align: bottom;
 }
 
-table, th, td {
+table.fancy, table.fancy th, table.fancy td {
   border: 1px solid #000000;
   border-collapse: collapse;
 }
 
-th, td {
+table.fancy th, table.fancy td {
   padding: 3px;
 }
 
-th {
+table.fancy th {
   background-color: #606060;
   color: #ffffff;
+}
+
+.right {
+  text-align: right;
 }

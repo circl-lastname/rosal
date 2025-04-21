@@ -1,6 +1,11 @@
 {
+  "contact-new.png": "image/png",
   "go-home.png": "image/png",
+  "go-previous.png": "image/png",
+  "help-browser.png": "image/png",
   "icon-16x16.png": "image/png",
   "icon-48x48.png": "image/png",
-  "style.css": "text/css"
+  "style.css": "text/css",
+  "system-log-out.png": "image/png",
+  "system-users.png": "image/png"
 }
