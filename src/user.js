@@ -9,14 +9,14 @@ setInterval(() => {
   let now = new Date();
   
   for (let sessionId in sessions) {
-    if (now - sessions[sessionId].date >= 24*60*60*1000) {
+    if (now - sessions[sessionId].date >= 48*60*60*1000) {
       delete sessions[sessionId];
     }
   }
 }, 60*60*1000);
 
 function createSession(userId) {
-  let sessionId = randomBytes(16).toString("base64");
+  let sessionId = randomBytes(24).toString("base64");
   sessions[sessionId] = { userId: userId, date: new Date() };
   return sessionId;
 }
@@ -26,10 +26,16 @@ export async function createUser(username, email, password) {
     return false;
   }
   
+  let role = 0;
+  // The first created account becomes an Admin
+  if (db.prepare("SELECT COUNT(*) AS count FROM users").get().count === 0) {
+    role = 2;
+  }
+  
   let passwordHash = await bcrypt.hash(password, 10);
   
   let stmt = db.prepare("INSERT INTO users (username, displayName, email, color, role, passwordHash) VALUES (?, ?, ?, ?, ?, ?)");
-  let info = stmt.run(username, username, email, Math.floor(Math.random() * 360), 0, passwordHash);
+  let info = stmt.run(username, username, email, Math.floor(Math.random() * 360), role, passwordHash);
   
   return createSession(info.lastInsertRowid);
 }
@@ -50,19 +56,40 @@ export async function logInUser(username, password) {
 }
 
 export function logOutUser(req) {
+  if (!req.headers["cookie"]) {
+    return;
+  }
+  
   // Maybe just parse the cookies at this point
   let sessionId = ` ${req.headers["cookie"]}`.match(/(?<= session=)[^;]*/)?.[0];
   
-  if (sessionId && sessions[sessionId]) {
+  if (sessions[sessionId]) {
     delete sessions[sessionId];
   }
 }
 
+export async function changeUserPassword(userId, password) {
+  for (let sessionId in sessions) {
+    if (sessions[sessionId].userId === userId) {
+      delete sessions[sessionId];
+    }
+  }
+  
+  let passwordHash = await bcrypt.hash(password, 10);
+  
+  let stmt = db.prepare("UPDATE users SET passwordHash = ? WHERE id = ?");
+  stmt.run(passwordHash, userId);
+}
+
 export function getSessionUser(req) {
+  if (!req.headers["cookie"]) {
+    return undefined;
+  }
+  
   // Maybe just parse the cookies at this point
   let sessionId = ` ${req.headers["cookie"]}`.match(/(?<= session=)[^;]*/)?.[0];
   
-  if (!sessionId || !sessions[sessionId]) {
+  if (!sessions[sessionId]) {
     return undefined;
   }
   

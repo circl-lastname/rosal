@@ -1,0 +1,27 @@
+<div class="centered heading">User settings</div>
+<div class="centered">
+  <div class="button"><a href="/change-password"><img class="button-icon" width="22" height="22" src="/static/accessories-text-editor.png">Change password</a></div>
+</div>
+<form method="POST">
+  <div class="centered">
+    <table>
+      <tbody>
+        <tr>
+          <td class="right">Display name:</td>
+          <td><input type="text" name="displayName" value="%%displayName%%"></td>
+        </tr>
+        <tr>
+          <td class="right">Email:</td>
+          <td><input type="email" name="email" value="%%email%%"></td>
+        </tr>
+        <tr>
+          <td class="right">Color (degrees):</td>
+          <td><input type="number" min="0" max="360" name="color" value="%%color%%"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="centered">
+    <input type="submit" value="Save">
+  </div>
+</form>

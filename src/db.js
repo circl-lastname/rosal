@@ -8,6 +8,8 @@ export function initDatabase() {
   db = new Database(config.dbFile);
   
   db.exec(`
+PRAGMA foreign_keys = ON;
+
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT UNIQUE NOT NULL,

@@ -49,15 +49,26 @@ export function sendError(res, code, message) {
 }
 
 function parseForm(data) {
+  // Probably should use URLSearchParams, but if it works it works
   let fields = data.split("&");
   let form = {};
   
   for (let field of fields) {
     let keyValue = field.split("=");
-    form[keyValue[0]] = decodeURIComponent(keyValue[1]);
+    form[keyValue[0]] = decodeURIComponent(keyValue[1].replaceAll("+", " "));
   }
   
   return form;
+}
+
+export function assertForm(form, fields) {
+  for (let field of fields ) {
+    if (typeof form[field] !== "string") {
+      return false;
+    }
+  }
+  
+  return true;
 }
 
 function handleRequest(req, res) {
