@@ -1,14 +1,17 @@
 {
   "accessories-text-editor.png": "image/png",
   "contact-new.png": "image/png",
+  "document-new.png": "image/png",
   "go-home.png": "image/png",
   "go-previous.png": "image/png",
   "help-browser.png": "image/png",
   "icon-16x16.png": "image/png",
   "icon-48x48.png": "image/png",
+  "post-colors.png": "image/png",
   "preferences-desktop.png": "image/png",
   "preferences-system.png": "image/png",
   "style.css": "text/css",
   "system-log-out.png": "image/png",
-  "system-users.png": "image/png"
+  "system-users.png": "image/png",
+  "user-trash.png": "image.png"
 }

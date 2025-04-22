@@ -1,12 +1,12 @@
-import bcrypt from "bcryptjs";
-
+import { getSessionUser } from "./auth.js";
+import { controlPanelPages } from "./controlPanel.js";
 import { db, roleToString } from "./db.js";
-import { config, assertForm, sendError } from "./index.js";
-import { handleStaticRequest } from "./static.js";
+import { config, formatTimestamp, sendError } from "./index.js";
+import { staticPages } from "./static.js";
 import { populate } from "./template.js";
-import { createUser, logInUser, logOutUser, changeUserPassword, getSessionUser } from "./user.js";
+import { userManagementPages } from "./userManagement.js";
 
-function populatePage(user, pageName, content) {
+export function populatePage(user, pageName, content) {
   let buttons = "";
   
   buttons += populate("button", {
@@ -40,6 +40,14 @@ function populatePage(user, pageName, content) {
       text: "User settings"
     });
     
+    if (user.role >= 1) {
+      buttons += populate("button", {
+        href: "/control-panel",
+        icon: "preferences-desktop",
+        text: "Control panel"
+      });
+    }
+    
     buttons += populate("button", {
       href: "/log-out",
       icon: "system-log-out",
@@ -55,7 +63,7 @@ function populatePage(user, pageName, content) {
   });
 }
 
-function sendAlert(res, user, pageName, title, message, href) {
+export function sendAlert(res, user, pageName, title, message, href) {
   res.setHeader("Content-Type", "text/html");
   res.end(populatePage(user, pageName, populate("alert", {
     title: title,
@@ -68,209 +76,26 @@ export const pages = {
   "": {
     GET: (req, path, res) => {
       const user = getSessionUser(req);
-      sendAlert(res, user, "Front page", "Welcome", "This site is a work in progress", "/");
-    }
-  },
-  "static": {
-    hasSubpages: true,
-    GET: handleStaticRequest
-  },
-  "log-in": {
-    GET: (req, path, res) => {
-      const user = getSessionUser(req);
       
-      res.setHeader("Content-Type", "text/html");
-      res.end(populatePage(user, "Log in", populate("log-in")));
-    },
-    POST: async (req, path, form, res) => {
-      if (!assertForm(form, [ "username", "password" ])) {
-        sendError(res, 400, "Form must have username, password");
-        return;
-      }
+      let role = user ? user.role : 0;
       
-      const user = getSessionUser(req);
+      let stmt = db.prepare("SELECT id, name, description FROM boards WHERE role <= ? ORDER BY displayOrder ASC");
+      let boardsData = stmt.all(role);
       
-      let sessionId = await logInUser(form.username, form.password);
+      let boards = "";
       
-      if (sessionId === false) {
-        res.statusCode = 400;
-        sendAlert(res, user, "Log in", "Failed to log in", "Username or password incorrect.", "/log-in");
-      } else {
-        res.statusCode = 302;
-        res.setHeader("Location", "/");
-        res.setHeader("Set-Cookie", `session=${sessionId}`);
-        res.end();
-      }
-    }
-  },
-  "forgot-password": {
-    GET: (req, path, res) => {
-      const user = getSessionUser(req);
-      sendAlert(res, user, "Forgot password", "Forgot password", `Please contact support at ${config.supportEmail} with your account's email, an admin will manually reset your password.`, "/log-in");
-    },
-  },
-  "log-out": {
-    GET: (req, path, res) => {
-      logOutUser(req);
-      
-      res.statusCode = 302;
-      res.setHeader("Location", "/");
-      res.end();
-    }
-  },
-  "register": {
-    GET: (req, path, res) => {
-      const user = getSessionUser(req);
-      
-      res.setHeader("Content-Type", "text/html");
-      res.end(populatePage(user, "Register", populate("register")));
-    },
-    POST: async (req, path, form, res) => {
-      if (!assertForm(form, [ "username", "email", "password", "confirmPassword" ])) {
-        sendError(res, 400, "Form must have username, email, password, confirmPassword");
-        return;
-      }
-      
-      const user = getSessionUser(req);
-      
-      if (form.username.length < 1 || form.username.length > 24) {
-        res.statusCode = 400;
-        sendAlert(res, user, "Register", "Failed to register", "Username must be between 1 and 24 characters.", "/register");
-        return;
-      }
-      
-      const regex = /[^a-z0-9_.-]/;
-      if (regex.test(form.username)) {
-        res.statusCode = 400;
-        sendAlert(res, user, "Register", "Failed to register", "Username must be lowercase and may have digits, underscores, dots, and dashes.", "/register");
-        return;
-      }
-      
-      if (form.password !== form.confirmPassword) {
-        res.statusCode = 400;
-        sendAlert(res, user, "Register", "Failed to register", "Passwords do not match.", "/register");
-        return;
-      }
-      
-      if (bcrypt.truncates(form.password)) {
-        res.statusCode = 400;
-        sendAlert(res, user, "Register", "Failed to register", "Password must be no more than 72 bytes.", "/register");
-        return;
-      }
-      
-      let sessionId = await createUser(form.username, form.email, form.password);
-      
-      if (sessionId === false) {
-        res.statusCode = 400;
-        sendAlert(res, user, "Register", "Failed to register", "A user with the given username already exists.", "/register");
-      } else {
-        res.statusCode = 302;
-        res.setHeader("Location", "/user-settings");
-        res.setHeader("Set-Cookie", `session=${sessionId}`);
-        res.end();
-      }
-    }
-  },
-  "change-password": {
-    GET: (req, path, res) => {
-      const user = getSessionUser(req);
-      
-      if (!user) {
-        res.statusCode = 403;
-        sendAlert(res, user, "User settings", "Please log in", "Log in to change password.", "/");
-        return;
+      for (let board of boardsData) {
+        boards += populate("front-page.board", {
+          id: board.id,
+          name: board.name,
+          description: board.description
+        });
       }
       
       res.setHeader("Content-Type", "text/html");
-      res.end(populatePage(user, "Change password", populate("change-password")));
-    },
-    POST: async (req, path, form, res) => {
-      if (!assertForm(form, [ "oldPassword", "newPassword", "confirmNewPassword" ])) {
-        sendError(res, 400, "Form must have oldPassword, newPassword, confirmNewPassword");
-        return;
-      }
-      
-      const user = getSessionUser(req);
-      
-      if (!user) {
-        sendError(res, 403, "Log in to change password");
-        return;
-      }
-      
-      if (!(await bcrypt.compare(form.oldPassword, user.passwordHash))) {
-        res.statusCode = 400;
-        sendAlert(res, user, "Change password", "Failed to change password", "Old password incorrect.", "/change-password");
-        return;
-      }
-      
-      if (form.newPassword !== form.confirmNewPassword) {
-        res.statusCode = 400;
-        sendAlert(res, user, "Change password", "Failed to change password", "New passwords do not match.", "/change-password");
-        return;
-      }
-      
-      if (bcrypt.truncates(form.newPassword)) {
-        res.statusCode = 400;
-        sendAlert(res, user, "Change password", "Failed to change password", "New password must be no more than 72 bytes.", "/change-password");
-        return;
-      }
-      
-      await changeUserPassword(user.id, form.newPassword);
-      
-      res.statusCode = 302;
-      res.setHeader("Location", `/log-in`);
-      res.end();
-    }
-  },
-  "user-settings": {
-    GET: (req, path, res) => {
-      const user = getSessionUser(req);
-      
-      if (!user) {
-        res.statusCode = 403;
-        sendAlert(res, user, "User settings", "Please log in", "Log in to change user settings.", "/");
-        return;
-      }
-      
-      res.setHeader("Content-Type", "text/html");
-      res.end(populatePage(user, "User settings", populate("user-settings", {
-        displayName: user.displayName,
-        email: user.email,
-        color: user.color
+      res.end(populatePage(user, "Front page", populate("front-page", {
+        boards: boards
       })));
-    },
-    POST: (req, path, form, res) => {
-      if (!assertForm(form, [ "displayName", "email", "color" ])) {
-        sendError(res, 400, "Form must have displayName, email, color");
-        return;
-      }
-      
-      const user = getSessionUser(req);
-      
-      if (!user) {
-        sendError(res, 403, "Log in to change user settings");
-        return;
-      }
-      
-      if (form.displayName.length < 1 || form.displayName.length > 36) {
-        res.statusCode = 400;
-        sendAlert(res, user, "User settings", "Failed to change settings", "Display name must be between 1 and 36 characters.", "/user-settings");
-        return;
-      }
-      
-      let color = parseInt(form.color);
-      if (!color || color < 0 || color > 360) {
-        res.statusCode = 400;
-        sendAlert(res, user, "User settings", "Failed to change settings", "Color must be between 0 and 360.", "/user-settings");
-        return;
-      }
-      
-      let stmt = db.prepare("UPDATE users SET displayName = ?, email = ?, color = ? WHERE id = ?");
-      stmt.run(form.displayName, form.email, color, user.id);
-      
-      res.statusCode = 302;
-      res.setHeader("Location", `/user/${user.username}`);
-      res.end();
     }
   },
   "user": {
@@ -297,7 +122,7 @@ export const pages = {
         displayName: reqUser.displayName,
         email: (() => {
           if (user && user.role >= 1) {
-            return populate("user-email", { email: reqUser.email });
+            return populate("user.email", { email: reqUser.email });
           } else {
             return "";
           }
@@ -306,5 +131,62 @@ export const pages = {
         role: roleToString(reqUser.role)
       })));
     }
+  },
+  "board": {
+    hasSubpages: true,
+    GET: (req, path, res) => {
+      if (path.length !== 2) {
+        sendError(res, 404, "Board not found");
+        return;
+      }
+      
+      const user = getSessionUser(req);
+      
+      let boardId = parseInt(path[1]);
+      if (Number.isNaN(boardId)) {
+        sendError(res, 404, "Board not found");
+        return;
+      }
+      
+      let board = db.prepare("SELECT name, role FROM boards WHERE id = ?").get(boardId);
+      
+      if (!board) {
+        sendError(res, 404, "Board not found");
+        return;
+      }
+      
+      if (board.role > (user ? user.role : 0)) {
+        res.statusCode = 403;
+        sendAlert(res, user, "Board", "Forbidden", "This page is accessible only to higher roles.", "/");
+        return;
+      }
+      
+      // Paginate later
+      let stmt = db.prepare("SELECT threads.id, threads.timestamp, threads.title, users.username, users.displayName, users.color FROM threads JOIN users ON threads.userID = users.id WHERE threads.boardId = ? ORDER BY threads.id DESC");
+      let threadsData = stmt.all(boardId);
+      
+      let threads = "";
+      
+      for (let thread of threadsData) {
+        threads += populate("board.thread", {
+          id: thread.id,
+          timestamp: formatTimestamp(thread.timestamp),
+          title: thread.title,
+          username: thread.username,
+          displayName: thread.displayName,
+          color: thread.color
+        });
+      }
+      
+      res.setHeader("Content-Type", "text/html");
+      res.end(populatePage(user, board.name, populate("board", {
+        name: board.name,
+        threads: threads
+      })));
+    }
   }
 };
+
+Object.assign(pages, staticPages);
+Object.assign(pages, userManagementPages);
+Object.assign(pages, controlPanelPages);

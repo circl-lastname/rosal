@@ -34,8 +34,8 @@ export async function createUser(username, email, password) {
   
   let passwordHash = await bcrypt.hash(password, 10);
   
-  let stmt = db.prepare("INSERT INTO users (username, displayName, email, color, role, passwordHash) VALUES (?, ?, ?, ?, ?, ?)");
-  let info = stmt.run(username, username, email, Math.floor(Math.random() * 360), role, passwordHash);
+  let stmt = db.prepare("INSERT INTO users (username, displayName, bio, email, color, role, passwordHash) VALUES (?, ?, ?, ?, ?, ?, ?)");
+  let info = stmt.run(username, username, "", email, Math.floor(Math.random() * 360), role, passwordHash);
   
   return createSession(info.lastInsertRowid);
 }

@@ -19,7 +19,6 @@ const defaultConfig = {
   httpsKeyFile: null,
   httpsCertFile: null,
   // Environment
-  logDir: "log",
   dbFile: "db.sqlite",
 };
 
@@ -42,6 +41,53 @@ loadStaticFiles();
 loadTemplates();
 initDatabase();
 
+export function formatTimestamp(timestamp) {
+  const date = new Date(timestamp*1000);
+  
+  let month;
+  
+  switch (date.getUTCMonth()) {
+    case 0:
+      month = "Jan";
+    break;
+    case 1:
+      month = "Feb";
+    break;
+    case 2:
+      month = "Mar";
+    break;
+    case 3:
+      month = "Apr";
+    break;
+    case 4:
+      month = "May";
+    break;
+    case 5:
+      month = "Jun";
+    break;
+    case 6:
+      month = "Jul";
+    break;
+    case 7:
+      month = "Aug";
+    break;
+    case 8:
+      month = "Sep";
+    break;
+    case 9:
+      month = "Oct";
+    break;
+    case 10:
+      month = "Nov";
+    break;
+    case 11:
+      month = "Dec";
+    break;
+  }
+  
+  return `${date.getUTCDate()} ${month} ${date.getUTCFullYear()} ${date.getUTCHours().toString().padStart(2, "0")}:${date.getUTCMinutes().toString().padStart(2, "0")}:${date.getUTCSeconds().toString().padStart(2, "0")} UTC`;
+}
+
 export function sendError(res, code, message) {
   res.statusCode = code;
   res.setHeader("Content-Type", "text/html");
@@ -55,7 +101,11 @@ function parseForm(data) {
   
   for (let field of fields) {
     let keyValue = field.split("=");
-    form[keyValue[0]] = decodeURIComponent(keyValue[1].replaceAll("+", " "));
+    try {
+      form[keyValue[0]] = decodeURIComponent(keyValue[1].replaceAll("+", " "));
+    } catch {
+      form[keyValue[0]] = "";
+    }
   }
   
   return form;

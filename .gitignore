@@ -1,5 +1,4 @@
 config.json
 db.sqlite
-log
 node_modules
 package-lock.json

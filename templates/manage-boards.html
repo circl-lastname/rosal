@@ -1,0 +1,23 @@
+<div class="centered heading">Manage boards</div>
+<div class="centered">
+  <div class="button"><a href="/create-board"><img class="button-icon" width="22" height="22" src="/static/document-new.png">Create board</a></div>
+</div>
+<form method="POST">
+  <div class="centered">
+    <table class="fancy">
+      <tbody>
+        <tr>
+          <th>ID</th>
+          <th>Display<br>order</th>
+          <th>Name</th>
+          <th>Role</th>
+          <th>Actions</th>
+        </tr>
+        @@boards@@
+      </tbody>
+    </table>
+  </div>
+  <div class="centered">
+    <input type="submit" value="Save display order">
+  </div>
+</form>

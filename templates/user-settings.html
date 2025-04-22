@@ -15,8 +15,15 @@
           <td><input type="email" name="email" value="%%email%%"></td>
         </tr>
         <tr>
-          <td class="right">Color (degrees):</td>
-          <td><input type="number" min="0" max="360" name="color" value="%%color%%"></td>
+          <td class="right" rowspan="2">Color:</td>
+          <td><img style="display: block; margin-left: 10px; margin-right: 10px" width="360" height="24" src="/static/post-colors.png"></td>
+        </tr>
+        <tr>
+          <td><input type="range" style="display: block; width: 376px" min="0" max="359" name="color" value="@@color@@"></td>
+        </tr>
+        <tr>
+          <td class="right">Set color manually (degrees):</td>
+          <td><input type="number" style="width: 172px" min="0" max="359" name="manualColor" placeholder="Leave blank for slider"></td>
         </tr>
       </tbody>
     </table>

@@ -1,0 +1,30 @@
+<div class="centered heading">%%title%%</div>
+<form method="POST">
+  <div class="centered">
+    <table>
+      <tbody>
+        <tr>
+          <td class="right">Name:</td>
+          <td><input type="text" name="name" value="%%name%%"></td>
+        </tr>
+        <tr>
+          <td class="right">Description:</td>
+          <td><input type="text" name="description" value="%%description%%"></td>
+        </tr>
+        <tr>
+          <td class="right">Role:</td>
+          <td>
+            <select name="role">
+              <option value="0" @@selected0@@>User</option>
+              <option value="1" @@selected1@@>Moderator</option>
+              <option value="2" @@selected2@@>Administrator</option>
+            </select>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="centered">
+    <input type="submit" value="%%submitText%%">
+  </div>
+</form>

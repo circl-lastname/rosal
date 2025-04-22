@@ -28,6 +28,7 @@ export function populate(name, gaps) {
                                     .replaceAll("@", "&#64;");
       
       template = template.replaceAll(`%%${gap}%%`, text);
+      template = template.replaceAll(`%@${gap}@%`, text.replaceAll("\n", "<br>"));
     }
     
     for (let gap in gaps) {
