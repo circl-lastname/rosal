@@ -44,3 +44,23 @@ table.fancy th {
 .right {
   text-align: right;
 }
+
+.reply {
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+
+table.replyHeader, table.replyHeader th, table.replyHeader td {
+  border-bottom: none;
+}
+
+table.replyHeader td {
+  background-color: #e0e0e0;
+}
+
+.replyContent {
+  border: 1px solid #000000;
+  overflow-wrap: anywhere;
+  padding: 3px;
+  width: 768px;
+}

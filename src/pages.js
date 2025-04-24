@@ -1,10 +1,10 @@
 import { getSessionUser } from "./auth.js";
 import { controlPanelPages } from "./controlPanel.js";
 import { db, roleToString } from "./db.js";
-import { config, formatTimestamp, sendError } from "./index.js";
+import { assertForm, config, formatTimestamp, sendError } from "./index.js";
 import { staticPages } from "./static.js";
 import { populate } from "./template.js";
-import { userManagementPages } from "./userManagement.js";
+import { userPages } from "./user.js";
 
 export function populatePage(user, pageName, content) {
   let buttons = "";
@@ -98,40 +98,6 @@ export const pages = {
       })));
     }
   },
-  "user": {
-    hasSubpages: true,
-    GET: (req, path, res) => {
-      if (path.length !== 2) {
-        sendError(res, 404, "User not found");
-        return;
-      }
-      
-      const user = getSessionUser(req);
-      
-      let stmt = db.prepare("SELECT id, displayName, email, color, role FROM users WHERE username = ?");
-      let reqUser = stmt.get(path[1]);
-      
-      if (!reqUser) {
-        sendError(res, 404, "User not found");
-        return;
-      }
-      
-      res.setHeader("Content-Type", "text/html");
-      res.end(populatePage(user, reqUser.displayName, populate("user", {
-        username: path[1],
-        displayName: reqUser.displayName,
-        email: (() => {
-          if (user && user.role >= 1) {
-            return populate("user.email", { email: reqUser.email });
-          } else {
-            return "";
-          }
-        })(),
-        color: reqUser.color,
-        role: roleToString(reqUser.role)
-      })));
-    }
-  },
   "board": {
     hasSubpages: true,
     GET: (req, path, res) => {
@@ -162,7 +128,7 @@ export const pages = {
       }
       
       // Paginate later
-      let stmt = db.prepare("SELECT threads.id, threads.timestamp, threads.title, users.username, users.displayName, users.color FROM threads JOIN users ON threads.userID = users.id WHERE threads.boardId = ? ORDER BY threads.id DESC");
+      let stmt = db.prepare("SELECT threads.id, threads.timestamp, threads.title, users.username, users.displayName, users.color FROM threads JOIN users ON threads.userId = users.id WHERE threads.boardId = ? ORDER BY threads.id DESC");
       let threadsData = stmt.all(boardId);
       
       let threads = "";
@@ -181,12 +147,172 @@ export const pages = {
       res.setHeader("Content-Type", "text/html");
       res.end(populatePage(user, board.name, populate("board", {
         name: board.name,
+        createThread: (() => {
+          if (user) {
+            return populate("board.create-thread", { id: boardId });
+          } else {
+            return "";
+          }
+        })(),
         threads: threads
+      })));
+    }
+  },
+  "create-thread": {
+    hasSubpages: true,
+    GET: (req, path, res) => {
+      if (path.length !== 2) {
+        sendError(res, 404, "Board not found");
+        return;
+      }
+      
+      const user = getSessionUser(req);
+      
+      if (!user) {
+        res.statusCode = 403;
+        sendAlert(res, user, "Create thread", "Please log in", "Log in to create threads.", "/");
+        return;
+      }
+      
+      let boardId = parseInt(path[1]);
+      if (Number.isNaN(boardId)) {
+        sendError(res, 404, "Board not found");
+        return;
+      }
+      
+      let stmt = db.prepare("SELECT name, role FROM boards WHERE id = ?");
+      let board = stmt.get(boardId);
+      
+      if (!board) {
+        sendError(res, 404, "Board not found");
+        return;
+      }
+      
+      if (board.role > user.role) {
+        res.statusCode = 403;
+        sendAlert(res, user, "Create thread", "Forbidden", "This page is accessible only to higher roles.", "/");
+        return;
+      }
+      
+      res.setHeader("Content-Type", "text/html");
+      res.end(populatePage(user, "Create thread", populate("create-thread", {
+        name: board.name
+      })));
+    },
+    POST: (req, path, form, res) => {
+      if (path.length !== 2) {
+        sendError(res, 404, "Board not found");
+        return;
+      }
+      
+      if (!assertForm(form, [ "title", "content" ])) {
+        sendError(res, 400, "Form must have title, content");
+        return;
+      }
+      
+      const user = getSessionUser(req);
+      
+      if (!user) {
+        sendError(res, 403, "Log in to create threads");
+        return;
+      }
+      
+      let boardId = parseInt(path[1]);
+      if (Number.isNaN(boardId)) {
+        sendError(res, 404, "Board not found");
+        return;
+      }
+      
+      let boardStmt = db.prepare("SELECT role FROM boards WHERE id = ?");
+      let board = boardStmt.get(boardId);
+      
+      if (!board) {
+        sendError(res, 404, "Board not found");
+        return;
+      }
+      
+      if (board.role > user.role) {
+        sendError(res, 403, "This page is accessible only to higher roles");
+        return;
+      }
+      
+      let timestamp = Math.floor(Date.now()/1000);
+      
+      let threadStmt = db.prepare("INSERT INTO threads (boardId, userId, timestamp, title) VALUES (?, ?, ?, ?)");
+      let info = threadStmt.run(boardId, user.id, timestamp, form.title);
+      
+      let replyStmt = db.prepare("INSERT INTO replies (threadId, userId, timestamp, content) VALUES (?, ?, ?, ?)");
+      replyStmt.run(info.lastInsertRowid, user.id, timestamp, form.content);
+      
+      res.statusCode = 302;
+      res.setHeader("Location", `/thread/${info.lastInsertRowid}`);
+      res.end();
+    }
+  },
+  "thread": {
+    hasSubpages: true,
+    GET: (req, path, res) => {
+      if (path.length !== 2) {
+        sendError(res, 404, "Thread not found");
+        return;
+      }
+      
+      const user = getSessionUser(req);
+      
+      let threadId = parseInt(path[1]);
+      if (Number.isNaN(threadId)) {
+        sendError(res, 404, "Thread not found");
+        return;
+      }
+      
+      let threadStmt = db.prepare("SELECT threads.title, threads.boardId, boards.name, boards.role FROM threads JOIN boards ON threads.boardId = boards.id WHERE threads.id = ?");
+      let thread = threadStmt.get(threadId);
+      
+      if (!thread) {
+        sendError(res, 404, "Thread not found");
+        return;
+      }
+      
+      if (thread.role > (user ? user.role : 0)) {
+        res.statusCode = 403;
+        sendAlert(res, user, "Thread", "Forbidden", "This page is accessible only to higher roles.", "/");
+        return;
+      }
+      
+      let repliesStmt = db.prepare("SELECT replies.timestamp, replies.content, users.username, users.displayName, users.color, users.role FROM replies JOIN users ON replies.userId = users.id WHERE replies.threadId = ? ORDER BY replies.id ASC");
+      let repliesData = repliesStmt.all(threadId);
+      
+      let buttons = "";
+      
+      buttons += populate("button", {
+        href: `/board/${thread.boardId}`,
+        icon: "go-previous",
+        text: `Back to "${thread.name}"`
+      });
+      
+      let replies = "";
+      
+      for (let reply of repliesData) {
+        replies += populate("thread.reply", {
+          timestamp: formatTimestamp(reply.timestamp),
+          content: reply.content,
+          username: reply.username,
+          displayName: reply.displayName,
+          color: reply.color,
+          role: roleToString(reply.role)
+        });
+      }
+      
+      res.setHeader("Content-Type", "text/html");
+      res.end(populatePage(user, thread.title, populate("thread", {
+        title: thread.title,
+        buttons: buttons,
+        replies: replies
       })));
     }
   }
 };
 
 Object.assign(pages, staticPages);
-Object.assign(pages, userManagementPages);
+Object.assign(pages, userPages);
 Object.assign(pages, controlPanelPages);

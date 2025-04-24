@@ -6,7 +6,41 @@ import { assertForm, config, sendError } from "./index.js";
 import { populatePage, sendAlert } from "./pages.js";
 import { populate } from "./template.js";
 
-export const userManagementPages = {
+export const userPages = {
+  "user": {
+    hasSubpages: true,
+    GET: (req, path, res) => {
+      if (path.length !== 2) {
+        sendError(res, 404, "User not found");
+        return;
+      }
+      
+      const user = getSessionUser(req);
+      
+      let stmt = db.prepare("SELECT id, displayName, email, color, role FROM users WHERE username = ?");
+      let reqUser = stmt.get(path[1]);
+      
+      if (!reqUser) {
+        sendError(res, 404, "User not found");
+        return;
+      }
+      
+      res.setHeader("Content-Type", "text/html");
+      res.end(populatePage(user, reqUser.displayName, populate("user", {
+        username: path[1],
+        displayName: reqUser.displayName,
+        email: (() => {
+          if (user && user.role >= 1) {
+            return populate("user.email", { email: reqUser.email });
+          } else {
+            return "";
+          }
+        })(),
+        color: reqUser.color,
+        role: roleToString(reqUser.role)
+      })));
+    }
+  },
   "log-in": {
     GET: (req, path, res) => {
       const user = getSessionUser(req);
