@@ -223,6 +223,12 @@ export const pages = {
         return;
       }
       
+      if (form.title.length > 48) {
+        res.statusCode = 400;
+        sendAlert(res, user, "Create thread", "Failed to create thread", "Title must be no more than 48 characters.", `/create-thread/${boardId}`);
+        return;
+      }
+      
       let boardStmt = db.prepare("SELECT role FROM boards WHERE id = ?");
       let board = boardStmt.get(boardId);
       
@@ -265,7 +271,7 @@ export const pages = {
         return;
       }
       
-      let threadStmt = db.prepare("SELECT threads.title, threads.boardId, boards.name, boards.role FROM threads JOIN boards ON threads.boardId = boards.id WHERE threads.id = ?");
+      let threadStmt = db.prepare("SELECT threads.boardId, threads.userId, threads.title, boards.name, boards.role FROM threads JOIN boards ON threads.boardId = boards.id WHERE threads.id = ?");
       let thread = threadStmt.get(threadId);
       
       if (!thread) {
@@ -279,7 +285,7 @@ export const pages = {
         return;
       }
       
-      let repliesStmt = db.prepare("SELECT replies.timestamp, replies.content, users.username, users.displayName, users.color, users.role FROM replies JOIN users ON replies.userId = users.id WHERE replies.threadId = ? ORDER BY replies.id ASC");
+      let repliesStmt = db.prepare("SELECT replies.id, replies.timestamp, replies.content, users.username, users.displayName, users.color, users.role FROM replies JOIN users ON replies.userId = users.id WHERE replies.threadId = ? ORDER BY replies.id ASC");
       let repliesData = repliesStmt.all(threadId);
       
       let buttons = "";
@@ -290,16 +296,45 @@ export const pages = {
         text: `Back to "${thread.name}"`
       });
       
+      if (user) {
+        buttons += populate("button", {
+          href: `/reply/${threadId}`,
+          icon: "mail-reply-sender",
+          text: "Reply"
+        });
+        
+        if (thread.userId === user.id || user.role >= 1) {
+          buttons += populate("button", {
+            href: `/delete-thread/${threadId}`,
+            icon: "user-trash",
+            text: "Delete"
+          });
+        }
+      }
+      
       let replies = "";
       
       for (let reply of repliesData) {
         replies += populate("thread.reply", {
+          id: reply.id,
           timestamp: formatTimestamp(reply.timestamp),
-          content: reply.content,
+          content: reply.content.replaceAll("&", "&#38;")
+                                .replaceAll("<", "&lt;")
+                                .replaceAll(">", "&gt;")
+                                .replaceAll('"', "&#34;")
+                                .replaceAll("'", "&#39;")
+                                .replaceAll("%", "&#37;")
+                                .replaceAll("@", "&#64;")
+                                .replaceAll("\r\n", "<br>"),
           username: reply.username,
           displayName: reply.displayName,
           color: reply.color,
-          role: roleToString(reply.role)
+          role: roleToString(reply.role),
+          buttons: populate("button", {
+            href: `/thread/${threadId}#reply-${reply.id}`,
+            icon: "edit-paste",
+            text: "Link"
+          })
         });
       }
       
@@ -309,6 +344,98 @@ export const pages = {
         buttons: buttons,
         replies: replies
       })));
+    }
+  },
+  "delete-thread": {
+    hasSubpages: true,
+    GET: (req, path, res) => {}
+  },
+  "reply": {
+    hasSubpages: true,
+    GET: (req, path, res) => {
+      if (path.length !== 2) {
+        sendError(res, 404, "Thread not found");
+        return;
+      }
+      
+      const user = getSessionUser(req);
+      
+      if (!user) {
+        res.statusCode = 403;
+        sendAlert(res, user, "Reply", "Please log in", "Log in to reply.", "/");
+        return;
+      }
+      
+      let threadId = parseInt(path[1]);
+      if (Number.isNaN(threadId)) {
+        sendError(res, 404, "Thread not found");
+        return;
+      }
+      
+      let stmt = db.prepare("SELECT threads.title, boards.role FROM threads JOIN boards ON threads.boardId = boards.id WHERE threads.id = ?");
+      let thread = stmt.get(threadId);
+      
+      if (!thread) {
+        sendError(res, 404, "Thread not found");
+        return;
+      }
+      
+      if (thread.role > user.role) {
+        res.statusCode = 403;
+        sendAlert(res, user, "Reply", "Forbidden", "This page is accessible only to higher roles.", "/");
+        return;
+      }
+      
+      res.setHeader("Content-Type", "text/html");
+      res.end(populatePage(user, "Reply", populate("reply", {
+        title: thread.title
+      })));
+    },
+    POST: (req, path, form, res) => {
+      if (path.length !== 2) {
+        sendError(res, 404, "Thread not found");
+        return;
+      }
+      
+      if (!assertForm(form, [ "content" ])) {
+        sendError(res, 400, "Form must have content");
+        return;
+      }
+      
+      const user = getSessionUser(req);
+      
+      if (!user) {
+        sendError(res, 403, "Log in to reply");
+        return;
+      }
+      
+      let threadId = parseInt(path[1]);
+      if (Number.isNaN(threadId)) {
+        sendError(res, 404, "Thread not found");
+        return;
+      }
+      
+      let threadStmt = db.prepare("SELECT boards.role FROM threads JOIN boards ON threads.boardId = boards.id WHERE threads.id = ?");
+      let thread = threadStmt.get(threadId);
+      
+      if (!thread) {
+        sendError(res, 404, "Thread not found");
+        return;
+      }
+      
+      if (thread.role > user.role) {
+        sendError(res, 403, "This page is accessible only to higher roles");
+        return;
+      }
+      
+      let timestamp = Math.floor(Date.now()/1000);
+      
+      let stmt = db.prepare("INSERT INTO replies (threadId, userId, timestamp, content) VALUES (?, ?, ?, ?)");
+      stmt.run(threadId, user.id, timestamp, form.content);
+      
+      res.statusCode = 302;
+      res.setHeader("Location", `/thread/${threadId}`);
+      res.end();
     }
   }
 };

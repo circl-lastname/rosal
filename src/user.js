@@ -112,6 +112,12 @@ export const userPages = {
         return;
       }
       
+      if (form.email.length > 48) {
+        res.statusCode = 400;
+        sendAlert(res, user, "Register", "Failed to register", "Email must be no more than 48 characters.", "/register");
+        return;
+      }
+      
       if (form.password !== form.confirmPassword) {
         res.statusCode = 400;
         sendAlert(res, user, "Register", "Failed to register", "Passwords do not match.", "/register");
@@ -170,6 +176,12 @@ export const userPages = {
       if (form.displayName.length < 1 || form.displayName.length > 36) {
         res.statusCode = 400;
         sendAlert(res, user, "User settings", "Failed to change settings", "Display name must be between 1 and 36 characters.", "/user-settings");
+        return;
+      }
+      
+      if (form.email.length > 48) {
+        res.statusCode = 400;
+        sendAlert(res, user, "User settings", "Failed to change settings", "Email must be no more than 48 characters.", "/user-settings");
         return;
       }
       

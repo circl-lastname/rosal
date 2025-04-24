@@ -1,6 +1,7 @@
 {
   "accessories-text-editor.png": "image/png",
   "contact-new.png": "image/png",
+  "edit-paste.png": "image/png",
   "folder-new.png": "image/png",
   "go-home.png": "image/png",
   "go-previous.png": "image/png",
@@ -8,6 +9,7 @@
   "icon-16x16.png": "image/png",
   "icon-48x48.png": "image/png",
   "mail-message-new.png": "image/png",
+  "mail-reply-sender.png": "image/png",
   "post-colors.png": "image/png",
   "preferences-desktop.png": "image/png",
   "preferences-system.png": "image/png",

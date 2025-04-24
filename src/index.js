@@ -146,9 +146,8 @@ function handleRequest(req, res) {
       req.on("data", (chunk) => {
         size += chunk.length;
         
-        if (size > 102400) {
-          sendError(res, 413, "Request bigger than 102400 bytes");
-          return;
+        if (size > 20480) {
+          req.destroy();
         }
         
         data += chunk.toString();
