@@ -285,7 +285,7 @@ export const pages = {
         return;
       }
       
-      let repliesStmt = db.prepare("SELECT replies.id, replies.timestamp, replies.content, users.username, users.displayName, users.color, users.role FROM replies JOIN users ON replies.userId = users.id WHERE replies.threadId = ? ORDER BY replies.id ASC");
+      let repliesStmt = db.prepare("SELECT replies.id, replies.userId, replies.timestamp, replies.content, users.username, users.displayName, users.color, users.role FROM replies JOIN users ON replies.userId = users.id WHERE replies.threadId = ? ORDER BY replies.id ASC");
       let repliesData = repliesStmt.all(threadId);
       
       let buttons = "";
@@ -315,6 +315,22 @@ export const pages = {
       let replies = "";
       
       for (let reply of repliesData) {
+        let replyButtons = "";
+        
+        replyButtons += populate("button", {
+          href: `/thread/${threadId}#reply-${reply.id}`,
+          icon: "edit-paste",
+          text: "Link"
+        });
+        
+        if (user && (reply.userId === user.id || user.role >= 1)) {
+          replyButtons += populate("button", {
+            href: `/delete-reply/${reply.id}`,
+            icon: "user-trash",
+            text: "Delete"
+          });
+        }
+        
         replies += populate("thread.reply", {
           id: reply.id,
           timestamp: formatTimestamp(reply.timestamp),
@@ -330,11 +346,7 @@ export const pages = {
           displayName: reply.displayName,
           color: reply.color,
           role: roleToString(reply.role),
-          buttons: populate("button", {
-            href: `/thread/${threadId}#reply-${reply.id}`,
-            icon: "edit-paste",
-            text: "Link"
-          })
+          buttons: replyButtons
         });
       }
       
@@ -348,7 +360,89 @@ export const pages = {
   },
   "delete-thread": {
     hasSubpages: true,
-    GET: (req, path, res) => {}
+    GET: (req, path, res) => {
+      if (path.length !== 2) {
+        sendError(res, 404, "Thread not found");
+        return;
+      }
+      
+      const user = getSessionUser(req);
+      
+      if (!user) {
+        res.statusCode = 403;
+        sendAlert(res, user, "Delete thread", "Please log in", "Log in to delete threads.", "/");
+        return;
+      }
+      
+      let threadId = parseInt(path[1]);
+      if (Number.isNaN(threadId)) {
+        sendError(res, 404, "Thread not found");
+        return;
+      }
+      
+      let threadStmt = db.prepare("SELECT threads.userId, threads.title, boards.role FROM threads JOIN boards ON threads.boardId = boards.id WHERE threads.id = ?");
+      let thread = threadStmt.get(threadId);
+      
+      if (!thread) {
+        sendError(res, 404, "Thread not found");
+        return;
+      }
+      
+      if (thread.role > user.role || !(thread.userId === user.id || user.role >= 1)) {
+        res.statusCode = 403;
+        sendAlert(res, user, "Delete thread", "Forbidden", "This page is accessible only to higher roles.", "/");
+        return;
+      }
+      
+      res.setHeader("Content-Type", "text/html");
+      res.end(populatePage(user, "Delete thread", populate("delete-thread", {
+        title: thread.title
+      })));
+    },
+    POST: (req, path, form, res) => {
+      if (path.length !== 2) {
+        sendError(res, 404, "Thread not found");
+        return;
+      }
+      
+      const user = getSessionUser(req);
+      
+      if (!user) {
+        sendError(res, 403, "Log in to delete threads");
+        return;
+      }
+      
+      let threadId = parseInt(path[1]);
+      if (Number.isNaN(threadId)) {
+        sendError(res, 404, "Thread not found");
+        return;
+      }
+      
+      let threadStmt = db.prepare("SELECT threads.boardId, threads.userId, boards.role FROM threads JOIN boards ON threads.boardId = boards.id WHERE threads.id = ?");
+      let thread = threadStmt.get(threadId);
+      
+      if (!thread) {
+        sendError(res, 404, "Thread not found");
+        return;
+      }
+      
+      if (thread.role > user.role || !(thread.userId === user.id || user.role >= 1)) {
+        sendError(res, 403, "This page is accessible only to higher roles");
+        return;
+      }
+      
+      if (!db.prepare("SELECT 1 FROM threads WHERE id = ?").get(threadId)) {
+        sendError(res, 404, "Thread not found");
+        return;
+      }
+      
+      let stmt = db.prepare("DELETE FROM threads WHERE id = ?");
+      stmt.run(threadId);
+      
+      res.statusCode = 302;
+      res.setHeader("Location", `/board/${thread.boardId}`);
+      res.end();
+    }
   },
   "reply": {
     hasSubpages: true,
@@ -435,6 +529,108 @@ export const pages = {
       
       res.statusCode = 302;
       res.setHeader("Location", `/thread/${threadId}`);
+      res.end();
+    }
+  },
+  "delete-reply": {
+    hasSubpages: true,
+    GET: (req, path, res) => {
+      if (path.length !== 2) {
+        sendError(res, 404, "Reply not found");
+        return;
+      }
+      
+      const user = getSessionUser(req);
+      
+      if (!user) {
+        res.statusCode = 403;
+        sendAlert(res, user, "Delete reply", "Please log in", "Log in to delete replies.", "/");
+        return;
+      }
+      
+      let replyId = parseInt(path[1]);
+      if (Number.isNaN(replyId)) {
+        sendError(res, 404, "Reply not found");
+        return;
+      }
+      
+      let stmt = db.prepare("SELECT replies.threadId, replies.userId, replies.timestamp, replies.content, threads.title, boards.role AS boardRole, users.username, users.displayName, users.color, users.role FROM replies JOIN threads ON replies.threadId = threads.id JOIN boards ON threads.boardId = boards.id JOIN users ON replies.userId = users.id WHERE replies.id = ?");
+      let reply = stmt.get(replyId);
+      
+      if (!reply) {
+        sendError(res, 404, "Reply not found");
+        return;
+      }
+      
+      if (reply.boardRole > user.role || !(reply.userId === user.id || user.role >= 1)) {
+        res.statusCode = 403;
+        sendAlert(res, user, "Delete reply", "Forbidden", "This page is accessible only to higher roles.", "/");
+        return;
+      }
+      
+      res.setHeader("Content-Type", "text/html");
+      res.end(populatePage(user, "Delete reply", populate("delete-reply", {
+        title: reply.title,
+        reply: populate("thread.reply", {
+          id: replyId,
+          timestamp: formatTimestamp(reply.timestamp),
+          content: reply.content.replaceAll("&", "&#38;")
+                                .replaceAll("<", "&lt;")
+                                .replaceAll(">", "&gt;")
+                                .replaceAll('"', "&#34;")
+                                .replaceAll("'", "&#39;")
+                                .replaceAll("%", "&#37;")
+                                .replaceAll("@", "&#64;")
+                                .replaceAll("\r\n", "<br>"),
+          username: reply.username,
+          displayName: reply.displayName,
+          color: reply.color,
+          role: roleToString(reply.role),
+          buttons: populate("button", {
+            href: `/thread/${reply.threadId}#reply-${replyId}`,
+            icon: "edit-paste",
+            text: "Link"
+          })
+        })
+      })));
+    },
+    POST: (req, path, form, res) => {
+      if (path.length !== 2) {
+        sendError(res, 404, "Reply not found");
+        return;
+      }
+      
+      const user = getSessionUser(req);
+      
+      if (!user) {
+        sendError(res, 403, "Log in to delete replies");
+        return;
+      }
+      
+      let replyId = parseInt(path[1]);
+      if (Number.isNaN(replyId)) {
+        sendError(res, 404, "Reply not found");
+        return;
+      }
+      
+      let replyStmt = db.prepare("SELECT replies.threadId, replies.userId, boards.role FROM replies JOIN threads ON replies.threadId = threads.id JOIN boards ON threads.boardId = boards.id WHERE replies.id = ?");
+      let reply = replyStmt.get(replyId);
+      
+      if (!reply) {
+        sendError(res, 404, "Reply not found");
+        return;
+      }
+      
+      if (reply.role > user.role || !(reply.userId === user.id || user.role >= 1)) {
+        sendError(res, 403, "This page is accessible only to higher roles");
+        return;
+      }
+      
+      let stmt = db.prepare("DELETE FROM replies WHERE id = ?");
+      stmt.run(replyId);
+      
+      res.statusCode = 302;
+      res.setHeader("Location", `/thread/${reply.threadId}`);
       res.end();
     }
   }
