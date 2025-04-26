@@ -12,9 +12,11 @@
   "mail-reply-sender.png": "image/png",
   "post-colors.png": "image/png",
   "preferences-desktop.png": "image/png",
+  "preferences-desktop-theme.png": "image/png",
   "preferences-system.png": "image/png",
   "style.css": "text/css",
   "system-log-out.png": "image/png",
   "system-users.png": "image/png",
-  "user-trash.png": "image.png"
+  "user-trash.png": "image.png",
+  "view-refresh.png": "image.png"
 }

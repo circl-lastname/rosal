@@ -27,9 +27,9 @@ export async function createUser(username, email, password) {
   }
   
   let role = 0;
-  // The first created account becomes an Admin
+  // The first created account becomes an Owner
   if (db.prepare("SELECT COUNT(*) AS count FROM users").get().count === 0) {
-    role = 2;
+    role = 3;
   }
   
   let passwordHash = await bcrypt.hash(password, 10);

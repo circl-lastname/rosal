@@ -431,11 +431,6 @@ export const pages = {
         return;
       }
       
-      if (!db.prepare("SELECT 1 FROM threads WHERE id = ?").get(threadId)) {
-        sendError(res, 404, "Thread not found");
-        return;
-      }
-      
       let stmt = db.prepare("DELETE FROM threads WHERE id = ?");
       stmt.run(threadId);
       

@@ -17,6 +17,18 @@ export const controlPanelPages = {
       
       let buttons = "";
       
+      buttons += populate("button", {
+        href: "/all-users",
+        icon: "system-users",
+        text: "All users"
+      });
+      
+      buttons += populate("button", {
+        href: "/all-staff",
+        icon: "preferences-desktop-theme",
+        text: "All staff"
+      });
+      
       if (user.role >= 2) {
         buttons += populate("button", {
           href: "/manage-boards",
@@ -28,6 +40,68 @@ export const controlPanelPages = {
       res.setHeader("Content-Type", "text/html");
       res.end(populatePage(user, "Control panel", populate("control-panel", {
         buttons: buttons
+      })));
+    }
+  },
+  "all-users": {
+    GET: (req, path, res) => {
+      const user = getSessionUser(req);
+      
+      if (!user || user.role < 1) {
+        res.statusCode = 403;
+        sendAlert(res, user, "All users", "Forbidden", "This page is accessible only to moderators and administrators.", "/");
+        return;
+      }
+      
+      let stmt = db.prepare("SELECT username, displayName, color, role FROM users ORDER BY displayName COLLATE NOCASE ASC");
+      let usersData = stmt.all();
+      
+      let users = "";
+      
+      for (let user of usersData) {
+        users += populate("all-users.user", {
+          username: user.username,
+          displayName: user.displayName,
+          color: user.color,
+          role: roleToString(user.role)
+        });
+      }
+      
+      res.setHeader("Content-Type", "text/html");
+      res.end(populatePage(user, "All users", populate("all-users", {
+        name: "users",
+        users: users
+      })));
+    }
+  },
+  "all-staff": {
+    GET: (req, path, res) => {
+      const user = getSessionUser(req);
+      
+      if (!user || user.role < 1) {
+        res.statusCode = 403;
+        sendAlert(res, user, "All staff", "Forbidden", "This page is accessible only to moderators and administrators.", "/");
+        return;
+      }
+      
+      let stmt = db.prepare("SELECT username, displayName, color, role FROM users WHERE role >= 1 ORDER BY displayName COLLATE NOCASE ASC");
+      let usersData = stmt.all();
+      
+      let users = "";
+      
+      for (let user of usersData) {
+        users += populate("all-users.user", {
+          username: user.username,
+          displayName: user.displayName,
+          color: user.color,
+          role: roleToString(user.role)
+        });
+      }
+      
+      res.setHeader("Content-Type", "text/html");
+      res.end(populatePage(user, "All staff", populate("all-users", {
+        name: "staff",
+        users: users
       })));
     }
   },

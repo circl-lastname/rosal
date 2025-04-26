@@ -1,6 +1,7 @@
 import * as fs from "node:fs";
 import * as http from "node:http";
 import * as https from "node:https";
+import * as querystring from "node:querystring";
 
 import { initDatabase } from "./db.js";
 import { pages } from "./pages.js";
@@ -94,23 +95,6 @@ export function sendError(res, code, message) {
   res.end(populate("error", { code: code, message: message }));
 }
 
-function parseForm(data) {
-  // Probably should use URLSearchParams, but if it works it works
-  let fields = data.split("&");
-  let form = {};
-  
-  for (let field of fields) {
-    let keyValue = field.split("=");
-    try {
-      form[keyValue[0]] = decodeURIComponent(keyValue[1].replaceAll("+", " "));
-    } catch {
-      form[keyValue[0]] = "";
-    }
-  }
-  
-  return form;
-}
-
 export function assertForm(form, fields) {
   for (let field of fields ) {
     if (typeof form[field] !== "string") {
@@ -154,7 +138,7 @@ function handleRequest(req, res) {
       });
       
       req.on("end", () => {
-        pages[path[0]].POST(req, path, parseForm(data), res);
+        pages[path[0]].POST(req, path, querystring.parse(data), res);
       });
       
       req.on("error", (e) => {
@@ -170,8 +154,23 @@ function handleRequest(req, res) {
   }
 }
 
-const server = http.createServer(handleRequest);
+let server;
 
-server.listen(config.port, () => {
-  console.log(`Listening on port ${config.port} (HTTP)`);
-});
+if (config.useHttps) {
+  const options = {
+    key: config.httpsKeyFile,
+    cert: config.httpsCertFile
+  }
+  
+  server = https.createServer(options, handleRequest);
+  
+  server.listen(config.port, () => {
+    console.log(`Listening on port ${config.port} (HTTPS)`);
+  });
+} else {
+  server = http.createServer(handleRequest);
+  
+  server.listen(config.port, () => {
+    console.log(`Listening on port ${config.port} (HTTP)`);
+  });
+}

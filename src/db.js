@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS users (
   bio TEXT NOT NULL,
   email TEXT NOT NULL,
   color INTEGER NOT NULL,
-  role INTEGER NOT NULL CHECK (role in (0, 1, 2)),
+  role INTEGER NOT NULL CHECK (role in (0, 1, 2, 3)),
   passwordHash TEXT NOT NULL
 );
 
@@ -62,5 +62,7 @@ export function roleToString(role) {
       return "Moderator";
     case 2:
       return "Administrator";
+    case 3:
+      return "Owner";
   }
 }
