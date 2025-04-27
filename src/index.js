@@ -158,8 +158,8 @@ let server;
 
 if (config.useHttps) {
   const options = {
-    key: config.httpsKeyFile,
-    cert: config.httpsCertFile
+    key: fs.readFileSync(config.httpsKeyFile, "utf8"),
+    cert: fs.readFileSync(config.httpsCertFile, "utf8")
   }
   
   server = https.createServer(options, handleRequest);
