@@ -28,6 +28,7 @@
 }
 
 table.fancy, table.fancy th, table.fancy td {
+  background-color: #ffffff;
   border: 1px solid #000000;
   border-collapse: collapse;
 }
@@ -64,6 +65,7 @@ table.replyHeader td {
 }
 
 .replyContent {
+  background-color: #ffffff;
   border: 1px solid #000000;
   overflow-wrap: anywhere;
   padding: 3px;
