@@ -6,10 +6,10 @@ import { db, roleToString } from "./db.js";
 const sessions = {};
 
 setInterval(() => {
-  let now = new Date();
+  let now = Date.now();
   
   for (let sessionId in sessions) {
-    if (now - sessions[sessionId].date >= 48*60*60*1000) {
+    if (now - sessions[sessionId].lastUse >= 24*60*60*1000) {
       delete sessions[sessionId];
     }
   }
@@ -17,7 +17,7 @@ setInterval(() => {
 
 function createSession(userId) {
   let sessionId = randomBytes(24).toString("base64");
-  sessions[sessionId] = { userId: userId, date: new Date() };
+  sessions[sessionId] = { userId: userId, lastUse: Date.now() };
   return sessionId;
 }
 
@@ -92,6 +92,8 @@ export function getSessionUser(req) {
   if (!sessions[sessionId]) {
     return undefined;
   }
+  
+  sessions[sessionId].lastUse = Date.now();
   
   let stmt = db.prepare("SELECT * FROM users WHERE id = ?");
   return stmt.get(sessions[sessionId].userId);

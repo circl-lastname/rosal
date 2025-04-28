@@ -7,6 +7,10 @@ import { assertForm, config, formatTimestamp, sendError } from "./index.js";
 import { populatePage, sendAlert } from "./pages.js";
 import { populate } from "./template.js";
 
+function setCookie(res, sessionId) {
+  res.setHeader("Set-Cookie", `session=${sessionId}; HttpOnly; Max-Age=31536000; SameSite=Lax${config.useHttps ? "; Secure" : ""}`);
+}
+
 export const userPages = {
   "user": {
     hasSubpages: true,
@@ -291,7 +295,7 @@ export const userPages = {
       } else {
         res.statusCode = 302;
         res.setHeader("Location", "/");
-        res.setHeader("Set-Cookie", `session=${sessionId}`);
+        setCookie(res, sessionId);
         res.end();
       }
     }
@@ -365,7 +369,7 @@ export const userPages = {
       } else {
         res.statusCode = 302;
         res.setHeader("Location", "/user-settings");
-        res.setHeader("Set-Cookie", `session=${sessionId}`);
+        setCookie(res, sessionId);
         res.end();
       }
     }
