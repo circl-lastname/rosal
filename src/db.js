@@ -3,12 +3,17 @@ import Database from "better-sqlite3";
 import { config } from "./index.js";
 
 export let db;
+const currentSchemaVersion = 1;
 
 export function initDatabase() {
   db = new Database(config.dbFile);
   
   db.exec(`
 PRAGMA foreign_keys = ON;
+
+CREATE TABLE IF NOT EXISTS state (
+  schemaVersion INTEGER NOT NULL
+);
 
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,6 +57,12 @@ CREATE TABLE IF NOT EXISTS replies (
 );
 CREATE INDEX IF NOT EXISTS idxRepliesThreadId ON replies(threadId);
   `);
+  
+  const schemaVersion = db.prepare("SELECT schemaVersion FROM state").get();
+  
+  if (!schemaVersion) {
+    db.prepare("INSERT INTO state (schemaVersion) VALUES (?)").run(currentSchemaVersion);
+  }
 }
 
 export function roleToString(role) {
