@@ -23,9 +23,9 @@ export function populatePage(user, pageName, content) {
     });
     
     buttons += populate("button", {
-      href: "/register",
+      href: "/sign-up",
       icon: "contact-new",
-      text: "Register"
+      text: "Sign up"
     });
   } else {
     buttons += populate("button", {

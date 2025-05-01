@@ -315,12 +315,12 @@ export const userPages = {
       res.end();
     }
   },
-  "register": {
+  "sign-up": {
     GET: (req, path, res) => {
       const user = getSessionUser(req);
       
       res.setHeader("Content-Type", "text/html");
-      res.end(populatePage(user, "Register", populate("register")));
+      res.end(populatePage(user, "Sign up", populate("sign-up")));
     },
     POST: async (req, path, form, res) => {
       if (!assertForm(form, [ "username", "email", "password", "confirmPassword" ])) {
@@ -332,32 +332,32 @@ export const userPages = {
       
       if (form.username.length < 1 || form.username.length > 24) {
         res.statusCode = 400;
-        sendAlert(res, user, "Register", "Failed to register", "Username must be between 1 and 24 characters.", "/register");
+        sendAlert(res, user, "Sign up", "Failed to sign up", "Username must be between 1 and 24 characters.", "/sign-up");
         return;
       }
       
       const regex = /[^a-z0-9_.-]/;
       if (regex.test(form.username)) {
         res.statusCode = 400;
-        sendAlert(res, user, "Register", "Failed to register", "Username must be lowercase and may have digits, underscores, dots, and dashes.", "/register");
+        sendAlert(res, user, "Sign up", "Failed to sign up", "Username must be lowercase and may have digits, underscores, dots, and dashes.", "/sign-up");
         return;
       }
       
       if (form.email.length > 48) {
         res.statusCode = 400;
-        sendAlert(res, user, "Register", "Failed to register", "Email must be no more than 48 characters.", "/register");
+        sendAlert(res, user, "Sign up", "Failed to sign up", "Email must be no more than 48 characters.", "/sign-up");
         return;
       }
       
       if (form.password !== form.confirmPassword) {
         res.statusCode = 400;
-        sendAlert(res, user, "Register", "Failed to register", "Passwords do not match.", "/register");
+        sendAlert(res, user, "Sign up", "Failed to sign up", "Passwords do not match.", "/sign-up");
         return;
       }
       
       if (bcrypt.truncates(form.password)) {
         res.statusCode = 400;
-        sendAlert(res, user, "Register", "Failed to register", "Password must be no more than 72 bytes.", "/register");
+        sendAlert(res, user, "Sign up", "Failed to sign up", "Password must be no more than 72 bytes.", "/sign-up");
         return;
       }
       
@@ -365,7 +365,7 @@ export const userPages = {
       
       if (sessionId === false) {
         res.statusCode = 400;
-        sendAlert(res, user, "Register", "Failed to register", "A user with the given username already exists.", "/register");
+        sendAlert(res, user, "Sign up", "Failed to sign up", "A user with the given username already exists.", "/sign-up");
       } else {
         res.statusCode = 302;
         res.setHeader("Location", "/user-settings");
