@@ -481,5 +481,38 @@ export const userPages = {
       res.setHeader("Location", "/log-in");
       res.end();
     }
+  },
+  "unread-replies": {
+    GET: (req, path, res) => {
+      const user = getSessionUser(req);
+      
+      if (!user) {
+        res.statusCode = 403;
+        sendAlert(res, user, "Unread replies", "Please log in", "Log in to view unread replies.", "/");
+        return;
+      }
+      
+      let stmt = db.prepare("SELECT followedThreads.threadId, followedThreads.replyId, threads.title, replies.timestamp FROM followedThreads JOIN threads ON followedThreads.threadId = threads.id JOIN replies ON threads.latestReplyId = replies.id WHERE followedThreads.userId = ? AND threads.latestReplyId > followedThreads.replyId ORDER BY threads.latestReplyId ASC");
+      let threadsData = stmt.all(user.id);
+      
+      user.sessionData.unreadTimestamp = Date.now();
+      user.sessionData.unreadCounter = threadsData.length;
+      
+      let threads = "";
+      
+      for (let thread of threadsData) {
+        threads += populate("unread-replies.thread", {
+          threadId: thread.threadId,
+          replyId: thread.replyId,
+          timestamp: formatTimestamp(thread.timestamp),
+          title: thread.title
+        });
+      }
+      
+      res.setHeader("Content-Type", "text/html");
+      res.end(populatePage(user, "Unread replies", populate("unread-replies", {
+        threads: threads
+      })));
+    }
   }
 };

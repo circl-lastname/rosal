@@ -28,6 +28,16 @@ export function populatePage(user, pageName, content) {
       text: "Sign up"
     });
   } else {
+    if (!user.sessionData.unreadTimestamp || Date.now() - user.sessionData.unreadTimestamp >= 2*60*1000) {
+      user.sessionData.unreadTimestamp = Date.now();
+      let stmt = db.prepare("SELECT COUNT(*) AS count FROM followedThreads JOIN threads ON followedThreads.threadId = threads.id WHERE followedThreads.userId = ? AND threads.latestReplyId > followedThreads.replyId");
+      user.sessionData.unreadCounter = stmt.get(user.id).count;
+    }
+    
+    buttons += populate("unread-replies-button", {
+      counter: user.sessionData.unreadCounter ? ` (${user.sessionData.unreadCounter})` : "",
+    });
+    
     buttons += populate("button", {
       href: `/user/${user.username}`,
       icon: "system-users",
@@ -245,13 +255,17 @@ export const pages = {
       let timestamp = Math.floor(Date.now()/1000);
       
       let threadStmt = db.prepare("INSERT INTO threads (boardId, userId, timestamp, title) VALUES (?, ?, ?, ?)");
-      let info = threadStmt.run(boardId, user.id, timestamp, form.title);
+      let threadInfo = threadStmt.run(boardId, user.id, timestamp, form.title);
       
       let replyStmt = db.prepare("INSERT INTO replies (threadId, userId, timestamp, content) VALUES (?, ?, ?, ?)");
-      replyStmt.run(info.lastInsertRowid, user.id, timestamp, form.content);
+      let replyInfo = replyStmt.run(threadInfo.lastInsertRowid, user.id, timestamp, form.content);
+      db.prepare("UPDATE threads SET latestReplyId = ? WHERE id = ?").run(replyInfo.lastInsertRowid, threadInfo.lastInsertRowid);
+      
+      let followStmt = db.prepare("INSERT INTO followedThreads (userId, threadId, replyId) VALUES (?, ?, ?)");
+      followStmt.run(user.id, threadInfo.lastInsertRowid, replyInfo.lastInsertRowid);
       
       res.statusCode = 302;
-      res.setHeader("Location", `/thread/${info.lastInsertRowid}`);
+      res.setHeader("Location", `/thread/${threadInfo.lastInsertRowid}`);
       res.end();
     }
   },
@@ -285,6 +299,10 @@ export const pages = {
         return;
       }
       
+      if (user) {
+        db.prepare("UPDATE followedThreads SET replyId = (SELECT latestReplyId FROM threads WHERE id = ?) WHERE userId = ? AND threadId = ?").run(threadId, user.id, threadId);
+      }
+      
       let repliesStmt = db.prepare("SELECT replies.id, replies.userId, replies.timestamp, replies.content, users.username, users.displayName, users.color, users.role FROM replies JOIN users ON replies.userId = users.id WHERE replies.threadId = ? ORDER BY replies.id ASC");
       let repliesData = repliesStmt.all(threadId);
       
@@ -302,6 +320,20 @@ export const pages = {
           icon: "mail-reply-sender",
           text: "Reply"
         });
+        
+        if (db.prepare("SELECT 1 FROM followedThreads WHERE userId = ? AND threadId = ?").get(user.id, threadId)) {
+          buttons += populate("button", {
+            href: `/unfollow/${threadId}`,
+            icon: "dialog-error",
+            text: "Unfollow"
+          });
+        } else {
+          buttons += populate("button", {
+            href: `/follow/${threadId}`,
+            icon: "emblem-favorite",
+            text: "Follow"
+          });
+        }
         
         if (thread.userId === user.id || user.role >= 1) {
           buttons += populate("button", {
@@ -356,6 +388,104 @@ export const pages = {
         buttons: buttons,
         replies: replies
       })));
+    }
+  },
+  "follow": {
+    hasSubpages: true,
+    GET: (req, path, res) => {
+      if (path.length !== 2) {
+        sendError(res, 404, "Thread not found");
+        return;
+      }
+      
+      const user = getSessionUser(req);
+      
+      if (!user) {
+        res.statusCode = 403;
+        sendAlert(res, user, "Follow", "Please log in", "Log in to follow threads.", `/thread/${threadId}`);
+        return;
+      }
+      
+      let threadId = parseInt(path[1]);
+      if (Number.isNaN(threadId)) {
+        sendError(res, 404, "Thread not found");
+        return;
+      }
+      
+      let stmt = db.prepare("SELECT threads.latestReplyId, boards.role FROM threads JOIN boards ON threads.boardId = boards.id WHERE threads.id = ?");
+      let thread = stmt.get(threadId);
+      
+      if (!thread) {
+        sendError(res, 404, "Thread not found");
+        return;
+      }
+      
+      if (thread.role > user.role) {
+        res.statusCode = 403;
+        sendAlert(res, user, "Follow", "Forbidden", "This page is accessible only to higher roles.", "/");
+        return;
+      }
+      
+      if (!db.prepare("SELECT 1 FROM followedThreads WHERE userId = ? AND threadId = ?").get(user.id, threadId)) {
+        let followStmt = db.prepare("INSERT INTO followedThreads (userId, threadId, replyId) VALUES (?, ?, ?)");
+        followStmt.run(user.id, threadId, thread.latestReplyId);
+        
+        res.statusCode = 302;
+        res.setHeader("Location", `/thread/${threadId}`);
+        res.end();
+      } else {
+        res.statusCode = 400;
+        sendAlert(res, user, "Follow", "Failed to follow thread", "Already following this thread.", `/thread/${threadId}`);
+      }
+    }
+  },
+  "unfollow": {
+    hasSubpages: true,
+    GET: (req, path, res) => {
+      if (path.length !== 2) {
+        sendError(res, 404, "Thread not found");
+        return;
+      }
+      
+      const user = getSessionUser(req);
+      
+      if (!user) {
+        res.statusCode = 403;
+        sendAlert(res, user, "Unfollow", "Please log in", "Log in to unfollow threads.", `/thread/${threadId}`);
+        return;
+      }
+      
+      let threadId = parseInt(path[1]);
+      if (Number.isNaN(threadId)) {
+        sendError(res, 404, "Thread not found");
+        return;
+      }
+      
+      let stmt = db.prepare("SELECT threads.latestReplyId, boards.role FROM threads JOIN boards ON threads.boardId = boards.id WHERE threads.id = ?");
+      let thread = stmt.get(threadId);
+      
+      if (!thread) {
+        sendError(res, 404, "Thread not found");
+        return;
+      }
+      
+      if (thread.role > user.role) {
+        res.statusCode = 403;
+        sendAlert(res, user, "Unfollow", "Forbidden", "This page is accessible only to higher roles.", "/");
+        return;
+      }
+      
+      if (db.prepare("SELECT 1 FROM followedThreads WHERE userId = ? AND threadId = ?").get(user.id, threadId)) {
+        let unfollowStmt = db.prepare("DELETE FROM followedThreads WHERE userId = ? AND threadId = ?");
+        unfollowStmt.run(user.id, threadId);
+        
+        res.statusCode = 302;
+        res.setHeader("Location", `/thread/${threadId}`);
+        res.end();
+      } else {
+        res.statusCode = 400;
+        sendAlert(res, user, "Unfollow", "Failed to unfollow thread", "Already not following this thread.", `/thread/${threadId}`);
+      }
     }
   },
   "delete-thread": {
@@ -520,7 +650,13 @@ export const pages = {
       let timestamp = Math.floor(Date.now()/1000);
       
       let stmt = db.prepare("INSERT INTO replies (threadId, userId, timestamp, content) VALUES (?, ?, ?, ?)");
-      stmt.run(threadId, user.id, timestamp, form.content);
+      let info = stmt.run(threadId, user.id, timestamp, form.content);
+      db.prepare("UPDATE threads SET latestReplyId = ? WHERE id = ?").run(info.lastInsertRowid, threadId);
+      
+      if (!db.prepare("SELECT 1 FROM followedThreads WHERE userId = ? AND threadId = ?").get(user.id, threadId)) {
+        let followStmt = db.prepare("INSERT INTO followedThreads (userId, threadId, replyId) VALUES (?, ?, ?)");
+        followStmt.run(user.id, threadId, info.lastInsertRowid);
+      }
       
       res.statusCode = 302;
       res.setHeader("Location", `/thread/${threadId}`);

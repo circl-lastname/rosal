@@ -17,7 +17,7 @@ setInterval(() => {
 
 function createSession(userId) {
   let sessionId = randomBytes(24).toString("base64");
-  sessions[sessionId] = { userId: userId, lastUse: Date.now() };
+  sessions[sessionId] = { userId: userId, lastUse: Date.now(), sessionData: {} };
   return sessionId;
 }
 
@@ -96,5 +96,13 @@ export function getSessionUser(req) {
   sessions[sessionId].lastUse = Date.now();
   
   let stmt = db.prepare("SELECT * FROM users WHERE id = ?");
-  return stmt.get(sessions[sessionId].userId);
+  let user = stmt.get(sessions[sessionId].userId);
+  
+  if (!user) {
+    return undefined;
+  }
+  
+  user.sessionData = sessions[sessionId].sessionData;
+  
+  return user;
 }
