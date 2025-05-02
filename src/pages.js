@@ -659,7 +659,7 @@ export const pages = {
       }
       
       res.statusCode = 302;
-      res.setHeader("Location", `/thread/${threadId}`);
+      res.setHeader("Location", `/thread/${threadId}#reply-${info.lastInsertRowid}`);
       res.end();
     }
   },
