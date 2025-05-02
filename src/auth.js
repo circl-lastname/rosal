@@ -9,7 +9,7 @@ setInterval(() => {
   let now = Date.now();
   
   for (let sessionId in sessions) {
-    if (now - sessions[sessionId].lastUse >= 24*60*60*1000) {
+    if (now - sessions[sessionId].lastUse >= 48*60*60*1000) {
       delete sessions[sessionId];
     }
   }
