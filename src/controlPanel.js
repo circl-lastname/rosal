@@ -11,7 +11,7 @@ export const controlPanelPages = {
       
       if (!user || user.role < 1) {
         res.statusCode = 403;
-        sendAlert(res, user, "Control panel", "Forbidden", "This page is accessible only to moderators and administrators.", "/");
+        sendAlert(req, res, user, "Control panel", "Forbidden", "This page is accessible only to moderators and administrators.", "/");
         return;
       }
       
@@ -38,7 +38,7 @@ export const controlPanelPages = {
       }
       
       res.setHeader("Content-Type", "text/html");
-      res.end(populatePage(user, "Control panel", populate("control-panel", {
+      res.end(populatePage(req, user, "Control panel", populate("control-panel", {
         buttons: buttons
       })));
     }
@@ -49,7 +49,7 @@ export const controlPanelPages = {
       
       if (!user || user.role < 1) {
         res.statusCode = 403;
-        sendAlert(res, user, "All users", "Forbidden", "This page is accessible only to moderators and administrators.", "/");
+        sendAlert(req, res, user, "All users", "Forbidden", "This page is accessible only to moderators and administrators.", "/");
         return;
       }
       
@@ -68,7 +68,7 @@ export const controlPanelPages = {
       }
       
       res.setHeader("Content-Type", "text/html");
-      res.end(populatePage(user, "All users", populate("all-users", {
+      res.end(populatePage(req, user, "All users", populate("all-users", {
         name: "users",
         users: users
       })));
@@ -80,7 +80,7 @@ export const controlPanelPages = {
       
       if (!user || user.role < 1) {
         res.statusCode = 403;
-        sendAlert(res, user, "All staff", "Forbidden", "This page is accessible only to moderators and administrators.", "/");
+        sendAlert(req, res, user, "All staff", "Forbidden", "This page is accessible only to moderators and administrators.", "/");
         return;
       }
       
@@ -99,7 +99,7 @@ export const controlPanelPages = {
       }
       
       res.setHeader("Content-Type", "text/html");
-      res.end(populatePage(user, "All staff", populate("all-users", {
+      res.end(populatePage(req, user, "All staff", populate("all-users", {
         name: "staff",
         users: users
       })));
@@ -111,7 +111,7 @@ export const controlPanelPages = {
       
       if (!user || user.role < 2) {
         res.statusCode = 403;
-        sendAlert(res, user, "Manage boards", "Forbidden", "This page is accessible only to administrators.", "/");
+        sendAlert(req, res, user, "Manage boards", "Forbidden", "This page is accessible only to administrators.", "/");
         return;
       }
       
@@ -130,7 +130,7 @@ export const controlPanelPages = {
       }
       
       res.setHeader("Content-Type", "text/html");
-      res.end(populatePage(user, "Manage boards", populate("manage-boards", {
+      res.end(populatePage(req, user, "Manage boards", populate("manage-boards", {
         boards: boards
       })));
     },
@@ -169,12 +169,12 @@ export const controlPanelPages = {
       
       if (!user || user.role < 2) {
         res.statusCode = 403;
-        sendAlert(res, user, "Create board", "Forbidden", "This page is accessible only to administrators.", "/");
+        sendAlert(req, res, user, "Create board", "Forbidden", "This page is accessible only to administrators.", "/");
         return;
       }
       
       res.setHeader("Content-Type", "text/html");
-      res.end(populatePage(user, "Create board", populate("create-edit-board", {
+      res.end(populatePage(req, user, "Create board", populate("create-edit-board", {
         title: "Create board",
         name: "",
         description: "",
@@ -200,7 +200,7 @@ export const controlPanelPages = {
       let role = parseInt(form.role);
       if (Number.isNaN(role) || role < 0 || role > 2) {
         res.statusCode = 400;
-        sendAlert(res, user, "Create board", "Failed to create board", "Role must be User, Moderator, or Administrator.", "/create-board");
+        sendAlert(req, res, user, "Create board", "Failed to create board", "Role must be User, Moderator, or Administrator.", "/create-board");
         return;
       }
       
@@ -226,7 +226,7 @@ export const controlPanelPages = {
       
       if (!user || user.role < 2) {
         res.statusCode = 403;
-        sendAlert(res, user, "Edit board", "Forbidden", "This page is accessible only to administrators.", "/");
+        sendAlert(req, res, user, "Edit board", "Forbidden", "This page is accessible only to administrators.", "/");
         return;
       }
       
@@ -245,7 +245,7 @@ export const controlPanelPages = {
       }
       
       res.setHeader("Content-Type", "text/html");
-      res.end(populatePage(user, "Edit board", populate("create-edit-board", {
+      res.end(populatePage(req, user, "Edit board", populate("create-edit-board", {
         title: "Edit board",
         name: board.name,
         description: board.description,
@@ -288,7 +288,7 @@ export const controlPanelPages = {
       let role = parseInt(form.role);
       if (Number.isNaN(role) || role < 0 || role > 2) {
         res.statusCode = 400;
-        sendAlert(res, user, "Edit board", "Failed to edit board", "Role must be User, Moderator, or Administrator.", `/edit-board/${boardId}`);
+        sendAlert(req, res, user, "Edit board", "Failed to edit board", "Role must be User, Moderator, or Administrator.", `/edit-board/${boardId}`);
         return;
       }
       
@@ -312,7 +312,7 @@ export const controlPanelPages = {
       
       if (!user || user.role < 2) {
         res.statusCode = 403;
-        sendAlert(res, user, "Delete board", "Forbidden", "This page is accessible only to administrators.", "/");
+        sendAlert(req, res, user, "Delete board", "Forbidden", "This page is accessible only to administrators.", "/");
         return;
       }
       
@@ -331,7 +331,7 @@ export const controlPanelPages = {
       }
       
       res.setHeader("Content-Type", "text/html");
-      res.end(populatePage(user, "Delete board", populate("delete-board", {
+      res.end(populatePage(req, user, "Delete board", populate("delete-board", {
         name: board.name
       })));
     },

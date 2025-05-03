@@ -6,7 +6,7 @@ import { staticPages } from "./static.js";
 import { populate } from "./template.js";
 import { userPages } from "./user.js";
 
-export function populatePage(user, pageName, content) {
+export function populatePage(req, user, pageName, content) {
   let buttons = "";
   
   buttons += populate("button", {
@@ -69,13 +69,15 @@ export function populatePage(user, pageName, content) {
     forumName: config.name,
     pageName: pageName,
     buttons: buttons,
-    content: content
+    content: content,
+    url: `${config.useHttps ? "https" : "http"}://${req.headers["host"]}`,
+    path: req.url
   });
 }
 
-export function sendAlert(res, user, pageName, title, message, href) {
+export function sendAlert(req, res, user, pageName, title, message, href) {
   res.setHeader("Content-Type", "text/html");
-  res.end(populatePage(user, pageName, populate("alert", {
+  res.end(populatePage(req, user, pageName, populate("alert", {
     title: title,
     message: message,
     href: href
@@ -103,7 +105,7 @@ export const pages = {
       }
       
       res.setHeader("Content-Type", "text/html");
-      res.end(populatePage(user, "Front page", populate("front-page", {
+      res.end(populatePage(req, user, "Front page", populate("front-page", {
         boards: boards
       })));
     }
@@ -133,7 +135,7 @@ export const pages = {
       
       if (board.role > (user ? user.role : 0)) {
         res.statusCode = 403;
-        sendAlert(res, user, "Board", "Forbidden", "This page is accessible only to higher roles.", "/");
+        sendAlert(req, res, user, "Board", "Forbidden", "This page is accessible only to higher roles.", "/");
         return;
       }
       
@@ -155,7 +157,7 @@ export const pages = {
       }
       
       res.setHeader("Content-Type", "text/html");
-      res.end(populatePage(user, board.name, populate("board", {
+      res.end(populatePage(req, user, board.name, populate("board", {
         name: board.name,
         createThread: (() => {
           if (user) {
@@ -180,7 +182,7 @@ export const pages = {
       
       if (!user) {
         res.statusCode = 403;
-        sendAlert(res, user, "Create thread", "Please log in", "Log in to create threads.", "/");
+        sendAlert(req, res, user, "Create thread", "Please log in", "Log in to create threads.", "/");
         return;
       }
       
@@ -200,12 +202,12 @@ export const pages = {
       
       if (board.role > user.role) {
         res.statusCode = 403;
-        sendAlert(res, user, "Create thread", "Forbidden", "This page is accessible only to higher roles.", "/");
+        sendAlert(req, res, user, "Create thread", "Forbidden", "This page is accessible only to higher roles.", "/");
         return;
       }
       
       res.setHeader("Content-Type", "text/html");
-      res.end(populatePage(user, "Create thread", populate("create-thread", {
+      res.end(populatePage(req, user, "Create thread", populate("create-thread", {
         name: board.name
       })));
     },
@@ -235,7 +237,7 @@ export const pages = {
       
       if (form.title.length > 48) {
         res.statusCode = 400;
-        sendAlert(res, user, "Create thread", "Failed to create thread", "Title must be no more than 48 characters.", `/create-thread/${boardId}`);
+        sendAlert(req, res, user, "Create thread", "Failed to create thread", "Title must be no more than 48 characters.", `/create-thread/${boardId}`);
         return;
       }
       
@@ -295,7 +297,7 @@ export const pages = {
       
       if (thread.role > (user ? user.role : 0)) {
         res.statusCode = 403;
-        sendAlert(res, user, "Thread", "Forbidden", "This page is accessible only to higher roles.", "/");
+        sendAlert(req, res, user, "Thread", "Forbidden", "This page is accessible only to higher roles.", "/");
         return;
       }
       
@@ -383,7 +385,7 @@ export const pages = {
       }
       
       res.setHeader("Content-Type", "text/html");
-      res.end(populatePage(user, thread.title, populate("thread", {
+      res.end(populatePage(req, user, thread.title, populate("thread", {
         title: thread.title,
         buttons: buttons,
         replies: replies
@@ -402,7 +404,7 @@ export const pages = {
       
       if (!user) {
         res.statusCode = 403;
-        sendAlert(res, user, "Follow", "Please log in", "Log in to follow threads.", `/thread/${threadId}`);
+        sendAlert(req, res, user, "Follow", "Please log in", "Log in to follow threads.", `/thread/${threadId}`);
         return;
       }
       
@@ -422,7 +424,7 @@ export const pages = {
       
       if (thread.role > user.role) {
         res.statusCode = 403;
-        sendAlert(res, user, "Follow", "Forbidden", "This page is accessible only to higher roles.", "/");
+        sendAlert(req, res, user, "Follow", "Forbidden", "This page is accessible only to higher roles.", "/");
         return;
       }
       
@@ -435,7 +437,7 @@ export const pages = {
         res.end();
       } else {
         res.statusCode = 400;
-        sendAlert(res, user, "Follow", "Failed to follow thread", "Already following this thread.", `/thread/${threadId}`);
+        sendAlert(req, res, user, "Follow", "Failed to follow thread", "Already following this thread.", `/thread/${threadId}`);
       }
     }
   },
@@ -451,7 +453,7 @@ export const pages = {
       
       if (!user) {
         res.statusCode = 403;
-        sendAlert(res, user, "Unfollow", "Please log in", "Log in to unfollow threads.", `/thread/${threadId}`);
+        sendAlert(req, res, user, "Unfollow", "Please log in", "Log in to unfollow threads.", `/thread/${threadId}`);
         return;
       }
       
@@ -471,7 +473,7 @@ export const pages = {
       
       if (thread.role > user.role) {
         res.statusCode = 403;
-        sendAlert(res, user, "Unfollow", "Forbidden", "This page is accessible only to higher roles.", "/");
+        sendAlert(req, res, user, "Unfollow", "Forbidden", "This page is accessible only to higher roles.", "/");
         return;
       }
       
@@ -484,7 +486,7 @@ export const pages = {
         res.end();
       } else {
         res.statusCode = 400;
-        sendAlert(res, user, "Unfollow", "Failed to unfollow thread", "Already not following this thread.", `/thread/${threadId}`);
+        sendAlert(req, res, user, "Unfollow", "Failed to unfollow thread", "Already not following this thread.", `/thread/${threadId}`);
       }
     }
   },
@@ -500,7 +502,7 @@ export const pages = {
       
       if (!user) {
         res.statusCode = 403;
-        sendAlert(res, user, "Delete thread", "Please log in", "Log in to delete threads.", "/");
+        sendAlert(req, res, user, "Delete thread", "Please log in", "Log in to delete threads.", "/");
         return;
       }
       
@@ -520,12 +522,12 @@ export const pages = {
       
       if (thread.role > user.role || !(thread.userId === user.id || user.role >= 1)) {
         res.statusCode = 403;
-        sendAlert(res, user, "Delete thread", "Forbidden", "This page is accessible only to higher roles.", "/");
+        sendAlert(req, res, user, "Delete thread", "Forbidden", "This page is accessible only to higher roles.", "/");
         return;
       }
       
       res.setHeader("Content-Type", "text/html");
-      res.end(populatePage(user, "Delete thread", populate("delete-thread", {
+      res.end(populatePage(req, user, "Delete thread", populate("delete-thread", {
         title: thread.title
       })));
     },
@@ -581,7 +583,7 @@ export const pages = {
       
       if (!user) {
         res.statusCode = 403;
-        sendAlert(res, user, "Reply", "Please log in", "Log in to reply.", "/");
+        sendAlert(req, res, user, "Reply", "Please log in", "Log in to reply.", "/");
         return;
       }
       
@@ -601,12 +603,12 @@ export const pages = {
       
       if (thread.role > user.role) {
         res.statusCode = 403;
-        sendAlert(res, user, "Reply", "Forbidden", "This page is accessible only to higher roles.", "/");
+        sendAlert(req, res, user, "Reply", "Forbidden", "This page is accessible only to higher roles.", "/");
         return;
       }
       
       res.setHeader("Content-Type", "text/html");
-      res.end(populatePage(user, "Reply", populate("reply", {
+      res.end(populatePage(req, user, "Reply", populate("reply", {
         title: thread.title
       })));
     },
@@ -675,7 +677,7 @@ export const pages = {
       
       if (!user) {
         res.statusCode = 403;
-        sendAlert(res, user, "Delete reply", "Please log in", "Log in to delete replies.", "/");
+        sendAlert(req, res, user, "Delete reply", "Please log in", "Log in to delete replies.", "/");
         return;
       }
       
@@ -695,12 +697,12 @@ export const pages = {
       
       if (reply.boardRole > user.role || !(reply.userId === user.id || user.role >= 1)) {
         res.statusCode = 403;
-        sendAlert(res, user, "Delete reply", "Forbidden", "This page is accessible only to higher roles.", "/");
+        sendAlert(req, res, user, "Delete reply", "Forbidden", "This page is accessible only to higher roles.", "/");
         return;
       }
       
       res.setHeader("Content-Type", "text/html");
-      res.end(populatePage(user, "Delete reply", populate("delete-reply", {
+      res.end(populatePage(req, user, "Delete reply", populate("delete-reply", {
         title: reply.title,
         reply: populate("thread.reply", {
           id: replyId,

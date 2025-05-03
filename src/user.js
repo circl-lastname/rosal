@@ -74,7 +74,7 @@ export const userPages = {
       }
       
       res.setHeader("Content-Type", "text/html");
-      res.end(populatePage(user, reqUser.displayName, populate("user", {
+      res.end(populatePage(req, user, reqUser.displayName, populate("user", {
         username: path[1],
         displayName: reqUser.displayName,
         email: (() => {
@@ -111,12 +111,12 @@ export const userPages = {
       
       if (!user || user.role < 2 || user.role <= reqUser.role) {
         res.statusCode = 403;
-        sendAlert(res, user, "Change role", "Forbidden", "This page is accessible only to higher roles.", "/");
+        sendAlert(req, res, user, "Change role", "Forbidden", "This page is accessible only to higher roles.", "/");
         return;
       }
       
       res.setHeader("Content-Type", "text/html");
-      res.end(populatePage(user, "Change role", populate("change-role", {
+      res.end(populatePage(req, user, "Change role", populate("change-role", {
         displayName: reqUser.displayName,
         selected0: reqUser.role === 0 ? "selected" : "",
         selected1: reqUser.role === 1 ? "selected" : "",
@@ -178,12 +178,12 @@ export const userPages = {
       
       if (!user || user.role <= reqUser.role) {
         res.statusCode = 403;
-        sendAlert(res, user, "Reset password", "Forbidden", "This page is accessible only to higher roles.", "/");
+        sendAlert(req, res, user, "Reset password", "Forbidden", "This page is accessible only to higher roles.", "/");
         return;
       }
       
       res.setHeader("Content-Type", "text/html");
-      res.end(populatePage(user, "Reset password", populate("reset-password", {
+      res.end(populatePage(req, user, "Reset password", populate("reset-password", {
         displayName: reqUser.displayName
       })));
     },
@@ -211,7 +211,7 @@ export const userPages = {
       const newPassword = randomBytes(15).toString("base64");
       await changeUserPassword(reqUser.id, newPassword);
       
-      sendAlert(res, user, "Reset password", "Password reset", `The new password of user "${reqUser.displayName}" is ${newPassword}`, `/user/${path[1]}`);
+      sendAlert(req, res, user, "Reset password", "Password reset", `The new password of user "${reqUser.displayName}" is ${newPassword}`, `/user/${path[1]}`);
     }
   },
   "delete-user": {
@@ -234,12 +234,12 @@ export const userPages = {
       
       if (!user || user.role <= reqUser.role) {
         res.statusCode = 403;
-        sendAlert(res, user, "Delete user", "Forbidden", "This page is accessible only to higher roles.", "/");
+        sendAlert(req, res, user, "Delete user", "Forbidden", "This page is accessible only to higher roles.", "/");
         return;
       }
       
       res.setHeader("Content-Type", "text/html");
-      res.end(populatePage(user, "Delete user", populate("delete-user", {
+      res.end(populatePage(req, user, "Delete user", populate("delete-user", {
         displayName: reqUser.displayName
       })));
     },
@@ -277,7 +277,7 @@ export const userPages = {
       const user = getSessionUser(req);
       
       res.setHeader("Content-Type", "text/html");
-      res.end(populatePage(user, "Log in", populate("log-in")));
+      res.end(populatePage(req, user, "Log in", populate("log-in")));
     },
     POST: async (req, path, form, res) => {
       if (!assertForm(form, [ "username", "password" ])) {
@@ -291,7 +291,7 @@ export const userPages = {
       
       if (sessionId === false) {
         res.statusCode = 400;
-        sendAlert(res, user, "Log in", "Failed to log in", "Username or password incorrect.", "/log-in");
+        sendAlert(req, res, user, "Log in", "Failed to log in", "Username or password incorrect.", "/log-in");
       } else {
         res.statusCode = 302;
         res.setHeader("Location", "/");
@@ -303,7 +303,7 @@ export const userPages = {
   "forgot-password": {
     GET: (req, path, res) => {
       const user = getSessionUser(req);
-      sendAlert(res, user, "Forgot password", "Forgot password", `Please contact support at ${config.supportEmail} with your account's email, an admin will manually reset your password.`, "/log-in");
+      sendAlert(req, res, user, "Forgot password", "Forgot password", `Please contact support at ${config.supportEmail} with your account's email, an admin will manually reset your password.`, "/log-in");
     },
   },
   "log-out": {
@@ -320,7 +320,7 @@ export const userPages = {
       const user = getSessionUser(req);
       
       res.setHeader("Content-Type", "text/html");
-      res.end(populatePage(user, "Sign up", populate("sign-up")));
+      res.end(populatePage(req, user, "Sign up", populate("sign-up")));
     },
     POST: async (req, path, form, res) => {
       if (!assertForm(form, [ "username", "email", "password", "confirmPassword" ])) {
@@ -332,32 +332,32 @@ export const userPages = {
       
       if (form.username.length < 1 || form.username.length > 24) {
         res.statusCode = 400;
-        sendAlert(res, user, "Sign up", "Failed to sign up", "Username must be between 1 and 24 characters.", "/sign-up");
+        sendAlert(req, res, user, "Sign up", "Failed to sign up", "Username must be between 1 and 24 characters.", "/sign-up");
         return;
       }
       
       const regex = /[^a-z0-9_.-]/;
       if (regex.test(form.username)) {
         res.statusCode = 400;
-        sendAlert(res, user, "Sign up", "Failed to sign up", "Username must be lowercase and may have digits, underscores, dots, and dashes.", "/sign-up");
+        sendAlert(req, res, user, "Sign up", "Failed to sign up", "Username must be lowercase and may have digits, underscores, dots, and dashes.", "/sign-up");
         return;
       }
       
       if (form.email.length > 48) {
         res.statusCode = 400;
-        sendAlert(res, user, "Sign up", "Failed to sign up", "Email must be no more than 48 characters.", "/sign-up");
+        sendAlert(req, res, user, "Sign up", "Failed to sign up", "Email must be no more than 48 characters.", "/sign-up");
         return;
       }
       
       if (form.password !== form.confirmPassword) {
         res.statusCode = 400;
-        sendAlert(res, user, "Sign up", "Failed to sign up", "Passwords do not match.", "/sign-up");
+        sendAlert(req, res, user, "Sign up", "Failed to sign up", "Passwords do not match.", "/sign-up");
         return;
       }
       
       if (bcrypt.truncates(form.password)) {
         res.statusCode = 400;
-        sendAlert(res, user, "Sign up", "Failed to sign up", "Password must be no more than 72 bytes.", "/sign-up");
+        sendAlert(req, res, user, "Sign up", "Failed to sign up", "Password must be no more than 72 bytes.", "/sign-up");
         return;
       }
       
@@ -365,7 +365,7 @@ export const userPages = {
       
       if (sessionId === false) {
         res.statusCode = 400;
-        sendAlert(res, user, "Sign up", "Failed to sign up", "A user with the given username already exists.", "/sign-up");
+        sendAlert(req, res, user, "Sign up", "Failed to sign up", "A user with the given username already exists.", "/sign-up");
       } else {
         res.statusCode = 302;
         res.setHeader("Location", "/user-settings");
@@ -380,12 +380,12 @@ export const userPages = {
       
       if (!user) {
         res.statusCode = 403;
-        sendAlert(res, user, "User settings", "Please log in", "Log in to change user settings.", "/");
+        sendAlert(req, res, user, "User settings", "Please log in", "Log in to change user settings.", "/");
         return;
       }
       
       res.setHeader("Content-Type", "text/html");
-      res.end(populatePage(user, "User settings", populate("user-settings", {
+      res.end(populatePage(req, user, "User settings", populate("user-settings", {
         displayName: user.displayName,
         email: user.email,
         color: user.color
@@ -406,20 +406,20 @@ export const userPages = {
       
       if (form.displayName.length < 1 || form.displayName.length > 36) {
         res.statusCode = 400;
-        sendAlert(res, user, "User settings", "Failed to change settings", "Display name must be between 1 and 36 characters.", "/user-settings");
+        sendAlert(req, res, user, "User settings", "Failed to change settings", "Display name must be between 1 and 36 characters.", "/user-settings");
         return;
       }
       
       if (form.email.length > 48) {
         res.statusCode = 400;
-        sendAlert(res, user, "User settings", "Failed to change settings", "Email must be no more than 48 characters.", "/user-settings");
+        sendAlert(req, res, user, "User settings", "Failed to change settings", "Email must be no more than 48 characters.", "/user-settings");
         return;
       }
       
       let color = parseInt(form.manualColor !== "" ? form.manualColor : form.color);
       if (Number.isNaN(color) || color < 0 || color > 359) {
         res.statusCode = 400;
-        sendAlert(res, user, "User settings", "Failed to change settings", "Color must be between 0 and 359.", "/user-settings");
+        sendAlert(req, res, user, "User settings", "Failed to change settings", "Color must be between 0 and 359.", "/user-settings");
         return;
       }
       
@@ -437,12 +437,12 @@ export const userPages = {
       
       if (!user) {
         res.statusCode = 403;
-        sendAlert(res, user, "Change password", "Please log in", "Log in to change password.", "/");
+        sendAlert(req, res, user, "Change password", "Please log in", "Log in to change password.", "/");
         return;
       }
       
       res.setHeader("Content-Type", "text/html");
-      res.end(populatePage(user, "Change password", populate("change-password")));
+      res.end(populatePage(req, user, "Change password", populate("change-password")));
     },
     POST: async (req, path, form, res) => {
       if (!assertForm(form, [ "oldPassword", "newPassword", "confirmNewPassword" ])) {
@@ -459,19 +459,19 @@ export const userPages = {
       
       if (!(await bcrypt.compare(form.oldPassword, user.passwordHash))) {
         res.statusCode = 400;
-        sendAlert(res, user, "Change password", "Failed to change password", "Old password incorrect.", "/change-password");
+        sendAlert(req, res, user, "Change password", "Failed to change password", "Old password incorrect.", "/change-password");
         return;
       }
       
       if (form.newPassword !== form.confirmNewPassword) {
         res.statusCode = 400;
-        sendAlert(res, user, "Change password", "Failed to change password", "New passwords do not match.", "/change-password");
+        sendAlert(req, res, user, "Change password", "Failed to change password", "New passwords do not match.", "/change-password");
         return;
       }
       
       if (bcrypt.truncates(form.newPassword)) {
         res.statusCode = 400;
-        sendAlert(res, user, "Change password", "Failed to change password", "New password must be no more than 72 bytes.", "/change-password");
+        sendAlert(req, res, user, "Change password", "Failed to change password", "New password must be no more than 72 bytes.", "/change-password");
         return;
       }
       
@@ -488,7 +488,7 @@ export const userPages = {
       
       if (!user) {
         res.statusCode = 403;
-        sendAlert(res, user, "Unread replies", "Please log in", "Log in to view unread replies.", "/");
+        sendAlert(req, res, user, "Unread replies", "Please log in", "Log in to view unread replies.", "/");
         return;
       }
       
@@ -510,7 +510,7 @@ export const userPages = {
       }
       
       res.setHeader("Content-Type", "text/html");
-      res.end(populatePage(user, "Unread replies", populate("unread-replies", {
+      res.end(populatePage(req, user, "Unread replies", populate("unread-replies", {
         threads: threads
       })));
     }
