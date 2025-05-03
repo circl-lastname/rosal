@@ -16,11 +16,12 @@ const defaultConfig = {
   supportEmail: "placeholder@example.com",
   // Protocol 
   port: 8080,
+  host: "localhost:8080",
   useHttps: false,
   httpsKeyFile: null,
   httpsCertFile: null,
   // Environment
-  dbFile: "db.sqlite",
+  dbFile: "db.sqlite"
 };
 
 console.log("Rosal | Simple Old-School Forum Software");
@@ -107,6 +108,11 @@ export function assertForm(form, fields) {
 
 function handleRequest(req, res) {
   res.setHeader("Server", "Rosal");
+  
+  if (req.headers["host"] !== config.host) {
+    sendError(res, 400, `Host header must be ${config.host}`);
+    return;
+  }
   
   let path;
   

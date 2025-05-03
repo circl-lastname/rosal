@@ -70,7 +70,7 @@ export function populatePage(req, user, pageName, content) {
     pageName: pageName,
     buttons: buttons,
     content: content,
-    url: `${config.useHttps ? "https" : "http"}://${req.headers["host"]}`,
+    url: `${config.useHttps ? "https" : "http"}://${config.host}`,
     path: req.url
   });
 }
