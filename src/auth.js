@@ -5,7 +5,7 @@ import { db, roleToString } from "./db.js";
 
 setInterval(() => {
   let timestamp = Math.floor(Date.now()/1000);
-  db.prepare("DELETE FROM sessions WHERE expireTimestamp >= ?").run(timestamp);
+  db.prepare("DELETE FROM sessions WHERE expireTimestamp <= ?").run(timestamp);
 }, 60*60*1000);
 
 function createSession(userId) {
