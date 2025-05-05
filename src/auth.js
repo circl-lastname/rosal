@@ -3,22 +3,19 @@ import { randomBytes } from "node:crypto";
 
 import { db, roleToString } from "./db.js";
 
-const sessions = {};
-
 setInterval(() => {
-  let now = Date.now();
-  
-  for (let sessionId in sessions) {
-    if (now - sessions[sessionId].lastUse >= 48*60*60*1000) {
-      delete sessions[sessionId];
-    }
-  }
+  let timestamp = Math.floor(Date.now()/1000);
+  db.prepare("DELETE FROM sessions WHERE expireTimestamp >= ?").run(timestamp);
 }, 60*60*1000);
 
 function createSession(userId) {
-  let sessionId = randomBytes(24).toString("base64");
-  sessions[sessionId] = { userId: userId, lastUse: Date.now(), sessionData: {} };
-  return sessionId;
+  let token = randomBytes(24).toString("base64");
+  let expireTimestamp = Math.floor(Date.now()/1000) + 48*60*60;
+  
+  let stmt = db.prepare("INSERT INTO sessions (token, userId, expireTimestamp) VALUES (?, ?, ?)");
+  stmt.run(token, userId, expireTimestamp);
+  
+  return token;
 }
 
 export async function createUser(username, email, password) {
@@ -28,7 +25,8 @@ export async function createUser(username, email, password) {
   
   let role = 0;
   // The first created account becomes an Owner
-  if (db.prepare("SELECT COUNT(*) AS count FROM users").get().count === 0) {
+  // As a side-effect, if the Owner is deleted, the next created account becomes one
+  if (!db.prepare("SELECT 1 FROM users WHERE role = 3").get()) {
     role = 3;
   }
   
@@ -61,19 +59,13 @@ export function logOutUser(req) {
   }
   
   // Maybe just parse the cookies at this point
-  let sessionId = ` ${req.headers["cookie"]}`.match(/(?<= session=)[^;]*/)?.[0];
+  let token = ` ${req.headers["cookie"]}`.match(/(?<= session=)[^;]*/)?.[0];
   
-  if (sessions[sessionId]) {
-    delete sessions[sessionId];
-  }
+  db.prepare("DELETE FROM sessions WHERE token = ?").run(token);
 }
 
 export async function changeUserPassword(userId, password) {
-  for (let sessionId in sessions) {
-    if (sessions[sessionId].userId === userId) {
-      delete sessions[sessionId];
-    }
-  }
+  db.prepare("DELETE FROM sessions WHERE userId = ?").run(userId);
   
   let passwordHash = await bcrypt.hash(password, 10);
   
@@ -87,22 +79,18 @@ export function getSessionUser(req) {
   }
   
   // Maybe just parse the cookies at this point
-  let sessionId = ` ${req.headers["cookie"]}`.match(/(?<= session=)[^;]*/)?.[0];
-  
-  if (!sessions[sessionId]) {
+  let token = ` ${req.headers["cookie"]}`.match(/(?<= session=)[^;]*/)?.[0];
+  if (!token) {
     return undefined;
   }
   
-  sessions[sessionId].lastUse = Date.now();
-  
-  let stmt = db.prepare("SELECT * FROM users WHERE id = ?");
-  let user = stmt.get(sessions[sessionId].userId);
-  
+  let user = db.prepare("SELECT sessions.id AS sessionId, sessions.unreadCounter, sessions.unreadCounterTimestamp, users.* FROM sessions JOIN users ON sessions.userId = users.id WHERE token = ?").get(token);
   if (!user) {
     return undefined;
   }
   
-  user.sessionData = sessions[sessionId].sessionData;
+  let expireTimestamp = Math.floor(Date.now()/1000) + 48*60*60;
+  db.prepare("UPDATE sessions SET expireTimestamp = ? WHERE id = ?").run(expireTimestamp, user.sessionId);
   
   return user;
 }

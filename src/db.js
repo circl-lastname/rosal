@@ -26,6 +26,16 @@ export function initDatabase() {
       passwordHash TEXT NOT NULL
     );
     
+    CREATE TABLE IF NOT EXISTS sessions (
+      id INTEGER PRIMARY KEY,
+      token TEXT UNIQUE NOT NULL,
+      userId INTEGER NOT NULL,
+      expireTimestamp INTEGER NOT NULL,
+      unreadCounter INTEGER,
+      unreadCounterTimestamp INTEGER,
+      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+    );
+    
     CREATE TABLE IF NOT EXISTS boards (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       displayOrder INTEGER NOT NULL,

@@ -28,14 +28,15 @@ export function populatePage(req, user, pageName, content) {
       text: "Sign up"
     });
   } else {
-    if (!user.sessionData.unreadTimestamp || Date.now() - user.sessionData.unreadTimestamp >= 2*60*1000) {
-      user.sessionData.unreadTimestamp = Date.now();
+    if (!user.unreadCounterTimestamp || Math.floor(Date.now()/1000) - user.unreadCounterTimestamp >= 2*60) {
       let stmt = db.prepare("SELECT COUNT(*) AS count FROM followedThreads JOIN threads ON followedThreads.threadId = threads.id WHERE followedThreads.userId = ? AND threads.latestReplyId > followedThreads.replyId");
-      user.sessionData.unreadCounter = stmt.get(user.id).count;
+      user.unreadCounter = stmt.get(user.id).count;
+      
+      db.prepare("UPDATE sessions SET unreadCounter = ?, unreadCounterTimestamp = ? WHERE id = ?").run(user.unreadCounter, Math.floor(Date.now()/1000), user.sessionId);
     }
     
     buttons += populate("unread-replies-button", {
-      counter: user.sessionData.unreadCounter ? ` (${user.sessionData.unreadCounter})` : "",
+      counter: user.unreadCounter ? ` (${user.unreadCounter})` : "",
     });
     
     buttons += populate("button", {

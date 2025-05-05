@@ -7,8 +7,8 @@ import { assertForm, config, formatTimestamp, sendError } from "./index.js";
 import { populatePage, sendAlert } from "./pages.js";
 import { populate } from "./template.js";
 
-function setCookie(res, sessionId) {
-  res.setHeader("Set-Cookie", `session=${sessionId}; HttpOnly; Max-Age=31536000; SameSite=Lax${config.useHttps ? "; Secure" : ""}`);
+function setSessionCookie(res, token) {
+  res.setHeader("Set-Cookie", `session=${token}; HttpOnly; Max-Age=31536000; SameSite=Lax${config.useHttps ? "; Secure" : ""}`);
 }
 
 export const userPages = {
@@ -287,15 +287,15 @@ export const userPages = {
       
       const user = getSessionUser(req);
       
-      let sessionId = await logInUser(form.username, form.password);
+      let token = await logInUser(form.username, form.password);
       
-      if (sessionId === false) {
+      if (token === false) {
         res.statusCode = 400;
         sendAlert(req, res, user, "Log in", "Failed to log in", "Username or password incorrect.", "/log-in");
       } else {
         res.statusCode = 302;
         res.setHeader("Location", "/");
-        setCookie(res, sessionId);
+        setSessionCookie(res, token);
         res.end();
       }
     }
@@ -361,15 +361,15 @@ export const userPages = {
         return;
       }
       
-      let sessionId = await createUser(form.username, form.email, form.password);
+      let token = await createUser(form.username, form.email, form.password);
       
-      if (sessionId === false) {
+      if (token === false) {
         res.statusCode = 400;
         sendAlert(req, res, user, "Sign up", "Failed to sign up", "A user with the given username already exists.", "/sign-up");
       } else {
         res.statusCode = 302;
         res.setHeader("Location", "/user-settings");
-        setCookie(res, sessionId);
+        setSessionCookie(res, token);
         res.end();
       }
     }
@@ -495,8 +495,8 @@ export const userPages = {
       let stmt = db.prepare("SELECT followedThreads.threadId, followedThreads.replyId, threads.title, replies.timestamp FROM followedThreads JOIN threads ON followedThreads.threadId = threads.id JOIN replies ON threads.latestReplyId = replies.id WHERE followedThreads.userId = ? AND threads.latestReplyId > followedThreads.replyId ORDER BY threads.latestReplyId ASC");
       let threadsData = stmt.all(user.id);
       
-      user.sessionData.unreadTimestamp = Date.now();
-      user.sessionData.unreadCounter = threadsData.length;
+      user.unreadCounter = threadsData.length;
+      db.prepare("UPDATE sessions SET unreadCounter = ?, unreadCounterTimestamp = ? WHERE id = ?").run(threadsData.length, Math.floor(Date.now()/1000), user.sessionId);
       
       let threads = "";
       
