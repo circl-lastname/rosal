@@ -27,11 +27,11 @@ export function populate(name, gaps) {
                                      .replaceAll("%", "&#37;")
                                      .replaceAll("@", "&#64;");
       
-      template = template.replaceAll(`%%${gap}%%`, text);
+      template = template.replaceAll(`%%${gap}%%`, () => text);
     }
     
     for (let gap in gaps) {
-      template = template.replaceAll(`@@${gap}@@`, gaps[gap]);
+      template = template.replaceAll(`@@${gap}@@`, () => gaps[gap]);
     }
   }
   
