@@ -8,7 +8,7 @@ import { populatePage, sendAlert } from "./pages.js";
 import { populate } from "./template.js";
 
 function setSessionCookie(res, token) {
-  res.setHeader("Set-Cookie", `session=${token}; HttpOnly; Max-Age=31536000; SameSite=Lax${config.useHttps ? "; Secure" : ""}`);
+  res.setHeader("Set-Cookie", `session=${token}; HttpOnly; Max-Age=31536000; SameSite=Lax${config.useSecureCookies ? "; Secure" : ""}`);
 }
 
 export const userPages = {

@@ -18,6 +18,7 @@ const defaultConfig = {
   port: 8080,
   host: "localhost:8080",
   useHttps: false,
+  useSecureCookies: false,
   httpsKeyFile: null,
   httpsCertFile: null,
   // Environment
